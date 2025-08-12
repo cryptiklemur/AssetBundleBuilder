@@ -2,6 +2,15 @@
 
 A command-line tool for building Unity asset bundles for RimWorld mods. **No repository cloning or Unity project setup required!**
 
+## Prerequisites
+
+⚠️ **Unity Editor Required**: This tool requires Unity Hub and a Unity Editor installation (e.g., 2022.3.35f1) to build asset bundles. The tool will:
+- Auto-detect Unity installations in standard locations
+- Create temporary Unity projects automatically
+- Handle all Unity project configuration
+
+You can download Unity Hub from [unity.com/download](https://unity.com/download) and install the required Unity version through it.
+
 ## Installation
 
 ### .NET Global Tool (Recommended - Cross-Platform)
