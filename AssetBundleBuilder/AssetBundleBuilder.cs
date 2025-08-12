@@ -97,6 +97,8 @@ public static class Program {
             {
                 "-batchmode",
                 "-quit",
+                "-logfile",
+                "-",
                 "-projectPath",
                 config.TempProjectPath,
                 "-executeMethod",

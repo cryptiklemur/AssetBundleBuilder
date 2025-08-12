@@ -20,7 +20,7 @@ Download Unity Hub from [unity.com/download](https://unity.com/download) and ins
 dotnet tool install --global CryptikLemur.AssetBundleBuilder
 
 # Use anywhere
-assetbundlebuilder 2022.3.5f1 "/path/to/assets" "mybundle" "/path/to/output"
+assetbundlebuilder 2022.3.35f1 "/path/to/assets" "mybundle" "/path/to/output"
 ```
 
 ### Manual Installation
@@ -39,21 +39,21 @@ Extract and run the executable directly. No installation required.
 
 ```bash
 # Auto find Unity and build asset bundles
-assetbundlebuilder 2022.3.5f1 "/path/to/your/mod/assets" "mybundle" "/path/to/output/directory"
+assetbundlebuilder 2022.3.35f1 "/path/to/your/mod/assets" "mybundle" "/path/to/output/directory"
 ```
 
 ### With Custom Bundle Name
 
 ```bash
 # Specify a custom bundle name
-assetbundlebuilder 2022.3.5f1 "/path/to/assets" "author.modname" "/path/to/output"
+assetbundlebuilder 2022.3.35f1 "/path/to/assets" "author.modname" "/path/to/output"
 ```
 
 ### Specific Platform
 
 ```bash
 # Build only for Windows
-assetbundlebuilder 2022.3.5f1 "/path/to/assets" "mybundle" "/path/to/output" --target windows
+assetbundlebuilder 2022.3.35f1 "/path/to/assets" "mybundle" "/path/to/output" --target windows
 ```
 
 ## How It Works
@@ -66,7 +66,7 @@ assetbundlebuilder 2022.3.5f1 "/path/to/assets" "mybundle" "/path/to/output" --t
 
 ## Supported Features
 
-- Unity Version Auto Discovery: Just specify the version (e.g., `2022.3.5f1`)
+- Unity Version Auto Discovery: Just specify the version (e.g., `2022.3.35f1`)
 - Cross Platform: Windows, macOS, and Linux native executables
 - Multiple Build Targets: Windows, macOS, Linux asset bundles
 - Automatic Asset Import Settings: Textures, audio, shaders
@@ -83,7 +83,7 @@ assetbundlebuilder <unity-path-or-version> <asset-directory> <bundle-name> [outp
 
 ### Arguments
 
-- **unity-path-or-version**: Either Unity version (e.g., `2022.3.5f1`) or full path to Unity executable
+- **unity-path-or-version**: Either Unity version (e.g., `2022.3.35f1`) or full path to Unity executable
 - **asset-directory**: Directory containing your mod's assets (textures, sounds, etc.)
 - **bundle-name**: Name for the asset bundle (e.g., "mymod", "author.modname")
 - **output-directory**: Where to create the asset bundles (optional, defaults to current directory)
@@ -102,30 +102,30 @@ assetbundlebuilder <unity-path-or-version> <asset-directory> <bundle-name> [outp
 
 ```powershell
 # Using .NET global tool
-assetbundlebuilder 2022.3.5f1 "C:\MyMod\Assets" "mymod" "C:\MyMod\Output"
+assetbundlebuilder 2022.3.35f1 "C:\MyMod\Assets" "mymod" "C:\MyMod\Output"
 
 # Using specific Unity installation
-assetbundlebuilder "C:\Unity\2022.3.5f1\Editor\Unity.exe" "C:\MyMod\Assets" "mymod" "C:\MyMod\Output"
+assetbundlebuilder "C:\Unity\2022.3.35f1\Editor\Unity.exe" "C:\MyMod\Assets" "mymod" "C:\MyMod\Output"
 ```
 
 ### macOS
 
 ```bash
 # Using .NET global tool
-assetbundlebuilder 2022.3.5f1 "/Users/me/MyMod/Assets" "mymod" "/Users/me/MyMod/Output"
+assetbundlebuilder 2022.3.35f1 "/Users/me/MyMod/Assets" "mymod" "/Users/me/MyMod/Output"
 
 # Using specific Unity installation
-assetbundlebuilder "/Applications/Unity/Hub/Editor/2022.3.5f1/Unity.app/Contents/MacOS/Unity" "/Users/me/MyMod/Assets" "mymod" "/Users/me/MyMod/Output"
+assetbundlebuilder "/Applications/Unity/Hub/Editor/2022.3.35f1/Unity.app/Contents/MacOS/Unity" "/Users/me/MyMod/Assets" "mymod" "/Users/me/MyMod/Output"
 ```
 
 ### Linux
 
 ```bash
 # Using .NET Global Tool
-assetbundlebuilder 2022.3.5f1 "/home/user/MyMod/Assets" "mymod" "/home/user/MyMod/Output"
+assetbundlebuilder 2022.3.35f1 "/home/user/MyMod/Assets" "mymod" "/home/user/MyMod/Output"
 
 # Build only Linux bundles
-assetbundlebuilder 2022.3.5f1 "/home/user/MyMod/Assets" "mymod" "/home/user/MyMod/Output" --target linux
+assetbundlebuilder 2022.3.35f1 "/home/user/MyMod/Assets" "mymod" "/home/user/MyMod/Output" --target linux
 ```
 
 ## Unity Installation Paths
@@ -155,7 +155,7 @@ The tool automatically searches these common Unity installation locations:
   run: dotnet tool install --global CryptikLemur.AssetBundleBuilder
 
 - name: Build Asset Bundles
-  run: assetbundlebuilder 2022.3.5f1 "./Assets" "mymod" "./Output"
+  run: assetbundlebuilder 2022.3.35f1 "./Assets" "mymod" "./Output"
 ```
 
 ### Azure DevOps
@@ -168,7 +168,7 @@ The tool automatically searches these common Unity installation locations:
     custom: 'tool'
     arguments: 'install --global CryptikLemur.AssetBundleBuilder'
 
-- script: assetbundlebuilder 2022.3.5f1 "$(Build.SourcesDirectory)/Assets" "mymod" "$(Build.ArtifactStagingDirectory)"
+- script: assetbundlebuilder 2022.3.35f1 "$(Build.SourcesDirectory)/Assets" "mymod" "$(Build.ArtifactStagingDirectory)"
   displayName: 'Build Asset Bundles'
 ```
 
@@ -194,13 +194,13 @@ dotnet tool install --global AssetBundleBuilder.GlobalTool
 ### Invalid Bundle Name
 ```bash
 # Use a valid bundle name (alphanumeric, dots, underscores)
-assetbundlebuilder 2022.3.5f1 "/path/to/assets" "valid_bundle_name" "/path/to/output"
+assetbundlebuilder 2022.3.35f1 "/path/to/assets" "valid_bundle_name" "/path/to/output"
 ```
 
 ### Debugging
 ```bash
 # Keep temporary project for inspection
-assetbundlebuilder 2022.3.5f1 "/path/to/assets" "mybundle" "/path/to/output" --keep-temp
+assetbundlebuilder 2022.3.35f1 "/path/to/assets" "mybundle" "/path/to/output" --keep-temp
 ```
 
 ## Uninstallation
