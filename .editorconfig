@@ -1,0 +1,13 @@
+# top-most EditorConfig file
+root = true
+
+[*.cs]
+# Force block-scoped namespaces (with braces)
+csharp_style_namespace_declarations = file_scoped:suggestion
+
+# Optional: indent settings
+indent_style = space
+indent_size = 4
+
+# Recommended: keep consistent file headers or documentation
+file_header_template = unset

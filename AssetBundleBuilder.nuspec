@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+  <metadata>
+    <id>AssetBundleBuilder</id>
+    <version>1.0.0</version>
+    <title>Unity Asset Bundle Builder for RimWorld Mods</title>
+    <authors>RimWorld Cosmere</authors>
+    <description>A standalone command-line tool for building Unity asset bundles for RimWorld mods. Automatically creates temporary Unity projects and builds asset bundles with proper compression and platform support.</description>
+    <releaseNotes>Initial release with Unity version auto-discovery and cross-platform support.</releaseNotes>
+    <summary>Standalone Unity Asset Bundle Builder for RimWorld mod development</summary>
+    <language>en-US</language>
+    <projectUrl>https://github.com/CryptikLemur/RimworldCosmere</projectUrl>
+    <iconUrl>https://via.placeholder.com/64x64/007ACC/FFFFFF?text=ABB</iconUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <license type="expression">MIT</license>
+    <copyright>Copyright 2024</copyright>
+    <dependencies>
+      <group targetFramework=".NETCoreApp9.0" />
+    </dependencies>
+    <tags>unity rimworld modding assetbundle gamedev</tags>
+  </metadata>
+  <files>
+    <file src="publish\win-x64\AssetBundleBuilder.exe" target="tools\net9.0\any\win-x64\" />
+    <file src="publish\osx-x64\AssetBundleBuilder" target="tools\net9.0\any\osx-x64\" />
+    <file src="publish\osx-arm64\AssetBundleBuilder" target="tools\net9.0\any\osx-arm64\" />
+    <file src="publish\linux-x64\AssetBundleBuilder" target="tools\net9.0\any\linux-x64\" />
+    <file src="publish\linux-arm64\AssetBundleBuilder" target="tools\net9.0\any\linux-arm64\" />
+    <file src="README.md" target="" />
+  </files>
+</package>

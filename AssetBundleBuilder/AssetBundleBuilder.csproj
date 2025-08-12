@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <Authors>CryptikLemur</Authors>
+        <Product>AssetBundleBuilder</Product>
+        <CurrentDate>$([System.DateTime]::Now.ToString(yyyy/MM/dd HH:mm:ss))</CurrentDate>
+
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net9.0</TargetFramework>
+        <LangVersion>latest</LangVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>CryptikLemur.AssetBundleBuilder</RootNamespace>
+        <AssemblyName>CryptikLemur.AssetBundleBuilder</AssemblyName>
+        <SelfContained>false</SelfContained>
+        <DebugSymbols>true</DebugSymbols>
+        <DebugType>embedded</DebugType>
+        <Optimize>false</Optimize>
+        <DefineConstants>DEBUG;TRACE</DefineConstants>
+        <PackageId>CryptikLemur.AssetBundleBuilder</PackageId>
+
+        <!-- .NET Global Tool Properties -->
+        <PackAsTool>true</PackAsTool>
+        <ToolCommandName>assetbundlebuilder</ToolCommandName>
+        <Title>Unity Asset Bundle Builder for RimWorld Mods</Title>
+        <Description>A standalone command-line tool for building Unity asset bundles for RimWorld mods. Automatically creates temporary Unity projects and builds asset bundles with proper compression and platform support.</Description>
+        <PackageTags>unity rimworld modding assetbundle gamedev cli global-tool</PackageTags>
+        <PackageProjectUrl>https://github.com/CryptikLemur/AssetBundleBuilder</PackageProjectUrl>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <Copyright>Copyright 2025</Copyright>
+        <PackageVersion>1.0.0</PackageVersion>
+        <PackageReleaseNotes>Initial release with Unity version auto-discovery and cross-platform support.</PackageReleaseNotes>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+        <!--<DebugSymbols>false</DebugSymbols>
+        <DebugType>none</DebugType>
+        <Optimize>true</Optimize>
+        <DefineConstants>TRACE</DefineConstants>-->
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Remove="UnityScripts\AssetLabeler.cs"/>
+        <None Include="UnityScripts\AssetLabeler.cs">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <Compile Remove="UnityScripts\ModAssetBundleBuilder.cs"/>
+        <None Include="UnityScripts\ModAssetBundleBuilder.cs">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <Compile Remove="UnityScripts\PSDMatteUtility.cs"/>
+        <None Include="UnityScripts\PSDMatteUtility.cs">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <Compile Remove="..\AssetBundleBuilder.Tests\**\*.cs"/>
+    </ItemGroup>
+</Project>

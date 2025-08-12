@@ -1,0 +1,112 @@
+# .NET / C# .gitignore
+# Based on https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+*.log
+
+.claude
+CLAUDE.md
+
+# NuGet packages
+*.nupkg
+[Pp]ackages/
+*.nuget.props
+*.nuget.targets
+
+# Publish directories
+[Pp]ublish/
+
+# Visual Studio cache directory
+.vs/
+
+# Plastic Version Control
+.plastic
+
+# Gradle cache directory
+.gradle/
+
+# Visual Studio files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.tmp
+*.tmp_proj
+*_wpftmp.csproj
+*.vspscc
+*.vssscc
+.builds
+*.pidb
+*.svclog
+*.scc
+
+# Test results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Windows thumbnail cache files
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+
+# Dump file
+*.stackdump
+
+# Folder config file
+[Dd]esktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Windows Installer files
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+
+# Windows shortcuts
+*.lnk
+
+.vscode/launch.json
+.vscode/extensions.json
+
+# IDE folders (keep)
+# .claude
+# .idea  
+# .vscode
+
+# JetBrains Rider
+*.sln.iml
+
+# Temporary files
+*.tmp
+*.temp
+
+# Test output directories
+TestOutput/
+
+# Package manager files
+*.nupkg
+packages.config
+.idea

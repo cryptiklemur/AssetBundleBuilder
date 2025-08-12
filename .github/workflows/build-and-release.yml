@@ -1,0 +1,142 @@
+name: Build and Release
+
+on:
+  release:
+    types:
+      - published
+  push:
+    branches:
+      - 'main'
+      - 'beta'
+      - 'alpha'
+
+permissions:
+  contents: write
+  packages: write
+  issues: write
+  pull-requests: write
+
+env:
+  DOTNET_VERSION: '9.0.x'
+  
+jobs:
+  build-and-test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+    
+    - name: Restore dependencies
+      run: dotnet restore
+    
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+    
+    - name: Test
+      run: dotnet test --no-restore --verbosity normal --configuration Release
+
+  build-binaries:
+    needs: build-and-test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+            artifact-name: AssetBundleBuilder-linux
+            archive-cmd: tar czf ../AssetBundleBuilder-linux.tar.gz *
+          - os: windows-latest
+            rid: win-x64
+            artifact-name: AssetBundleBuilder-windows
+            archive-cmd: Compress-Archive -Path * -DestinationPath ../AssetBundleBuilder-windows.zip
+          - os: macos-latest
+            rid: osx-x64
+            artifact-name: AssetBundleBuilder-macos
+            archive-cmd: tar czf ../AssetBundleBuilder-macos.tar.gz *
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+    
+    - name: Publish
+      run: |
+        dotnet publish AssetBundleBuilder/AssetBundleBuilder.csproj \
+          -c Release \
+          -r ${{ matrix.rid }} \
+          --self-contained false \
+          -p:PublishSingleFile=true \
+          -o ./publish
+    
+    - name: Create archive
+      shell: bash
+      run: |
+        cd publish
+        ${{ matrix.archive-cmd }}
+        cd ..
+        mkdir -p zips
+        mv AssetBundleBuilder-*.* zips/
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact-name }}
+        path: zips/
+
+  semantic-release:
+    needs: build-binaries
+    runs-on: ubuntu-latest
+    if: needs.build-binaries.result == 'success' && github.event_name == 'push'
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        persist-credentials: false
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+    
+    - name: Prepare release assets
+      run: |
+        mkdir -p zips
+        find artifacts -name "*.zip" -o -name "*.tar.gz" | xargs -I {} cp {} zips/
+        ls -la zips/
+    
+    - name: Install semantic-release and plugins
+      run: |
+        npm install -g \
+          semantic-release \
+          @semantic-release/commit-analyzer \
+          @semantic-release/release-notes-generator \
+          @semantic-release/github
+    
+    - name: Run semantic-release
+      env:
+        GH_TOKEN: ${{ secrets.PAT }}
+        GIT_AUTHOR_NAME: semantic-release-bot
+        GIT_AUTHOR_EMAIL: semantic-release-bot@users.noreply.github.com
+        GIT_COMMITTER_NAME: semantic-release-bot
+        GIT_COMMITTER_EMAIL: semantic-release-bot@users.noreply.github.com
+      run: npx semantic-release
