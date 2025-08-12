@@ -8,42 +8,21 @@ A command-line tool for building Unity asset bundles for RimWorld mods. **No rep
 
 ```bash
 # Install globally
-dotnet tool install --global AssetBundleBuilder.GlobalTool
+dotnet tool install --global CryptikLemur.AssetBundleBuilder
 
 # Use anywhere
-assetbundlebuilder 2022.3.5f1 "/path/to/assets" "/path/to/output"
+assetbundlebuilder 2022.3.5f1 "/path/to/assets" "mybundle" "/path/to/output"
 ```
 
-### Windows - Chocolatey
+### Manual Installation (No .NET Required)
 
-```powershell
-# Install with Chocolatey
-choco install assetbundlebuilder
+Download the appropriate executable for your platform from the [**Releases Page**](https://github.com/CryptikLemur/AssetBundleBuilder/releases):
 
-# Use anywhere
-assetbundlebuilder 2022.3.5f1 "C:\MyMod\Assets" "C:\MyMod\Output"
-```
+- **Windows**: `AssetBundleBuilder-win-x64-v1.0.0.zip`
+- **macOS Intel**: `AssetBundleBuilder-osx-x64-v1.0.0.zip`
+- **Linux x64**: `AssetBundleBuilder-linux-x64-v1.0.0.zip`
 
-### macOS - Homebrew
-
-```bash
-# Install with Homebrew
-brew install assetbundlebuilder
-
-# Use anywhere
-assetbundlebuilder 2022.3.5f1 "/Users/me/MyMod/Assets" "/Users/me/MyMod/Output"
-```
-
-### Manual Installation
-
-Download the appropriate executable for your platform from the [releases page](https://github.com/CryptikLemur/RimworldCosmere/releases):
-
-- **Windows**: `AssetBundleBuilder-win-x64-1.0.0.zip`
-- **macOS Intel**: `AssetBundleBuilder-osx-x64-1.0.0.tar.gz`
-- **macOS Apple Silicon**: `AssetBundleBuilder-osx-arm64-1.0.0.tar.gz`
-- **Linux x64**: `AssetBundleBuilder-linux-x64-1.0.0.tar.gz`
-
-Extract and add to your system PATH.
+Extract and run the executable directly - no installation required!
 
 ## Quick Start
 
