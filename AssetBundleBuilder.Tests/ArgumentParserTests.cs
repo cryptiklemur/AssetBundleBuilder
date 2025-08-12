@@ -6,6 +6,15 @@ namespace CryptikLemur.AssetBundleBuilder.Tests;
 
 public class ArgumentParserTests
 {
+    private static string GetTestPath(string relativePath)
+    {
+        // Create cross-platform test paths
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            return Path.Combine("C:", relativePath);
+        else
+            return Path.Combine("/", relativePath);
+    }
+    
     private class TempUnityFile : IDisposable
     {
         public string Path { get; }
@@ -30,13 +39,15 @@ public class ArgumentParserTests
     [Fact]
     public void Parse_MinimalArgs_ShouldParseCorrectly()
     {
-        var args = new[] { "2022.3.35f1", @"C:\Assets", "test.bundle", @"C:\Output" };
+        var assetPath = GetTestPath("Assets");
+        var outputPath = GetTestPath("Output");
+        var args = new[] { "2022.3.35f1", assetPath, "test.bundle", outputPath };
         var config = ArgumentParser.Parse(args);
         
         Assert.NotNull(config);
         Assert.Equal("2022.3.35f1", config.UnityVersion);
-        Assert.Equal(@"C:\Assets", config.AssetDirectory);
-        Assert.Equal(@"C:\Output", config.OutputDirectory);
+        Assert.Equal(Path.GetFullPath(assetPath), config.AssetDirectory);
+        Assert.Equal(Path.GetFullPath(outputPath), config.OutputDirectory);
         Assert.Equal("test.bundle", config.BundleName);
         Assert.Equal("windows", config.BuildTarget);
         Assert.Equal("copy", config.LinkMethod);
@@ -46,20 +57,24 @@ public class ArgumentParserTests
     public void Parse_WithUnityPath_ShouldParseCorrectly()
     {
         using var tempUnity = new TempUnityFile("Unity");
-        var args = new[] { tempUnity.Path, @"C:\Assets", "test.bundle", @"C:\Output" };
+        var assetPath = GetTestPath("Assets");
+        var outputPath = GetTestPath("Output");
+        var args = new[] { tempUnity.Path, assetPath, "test.bundle", outputPath };
         var config = ArgumentParser.Parse(args);
         
         Assert.NotNull(config);
         Assert.Equal(tempUnity.Path, config.UnityPath);
-        Assert.Equal(@"C:\Assets", config.AssetDirectory);
-        Assert.Equal(@"C:\Output", config.OutputDirectory);
+        Assert.Equal(Path.GetFullPath(assetPath), config.AssetDirectory);
+        Assert.Equal(Path.GetFullPath(outputPath), config.OutputDirectory);
         Assert.Equal("test.bundle", config.BundleName);
     }
 
     [Fact]
     public void Parse_WithBuildTarget_ShouldParseCorrectly()
     {
-        var args = new[] { "2022.3.35f1", @"C:\Assets", "test.bundle", @"C:\Output", "--target", "windows" };
+        var assetPath = GetTestPath("Assets");
+        var outputPath = GetTestPath("Output");
+        var args = new[] { "2022.3.35f1", assetPath, "test.bundle", outputPath, "--target", "windows" };
         var config = ArgumentParser.Parse(args);
         
         Assert.NotNull(config);
@@ -69,19 +84,21 @@ public class ArgumentParserTests
     [Fact]
     public void Parse_WithLinkMethods_ShouldParseCorrectly()
     {
-        var args1 = new[] { "2022.3.35f1", @"C:\Assets", "test", @"C:\Output", "--symlink" };
+        var assetPath = GetTestPath("Assets");
+        var outputPath = GetTestPath("Output");
+        var args1 = new[] { "2022.3.35f1", assetPath, "test", outputPath, "--symlink" };
         var config1 = ArgumentParser.Parse(args1);
         Assert.Equal("symlink", config1?.LinkMethod);
 
-        var args2 = new[] { "2022.3.35f1", @"C:\Assets", "test", @"C:\Output", "--hardlink" };
+        var args2 = new[] { "2022.3.35f1", assetPath, "test", outputPath, "--hardlink" };
         var config2 = ArgumentParser.Parse(args2);
         Assert.Equal("hardlink", config2?.LinkMethod);
 
-        var args3 = new[] { "2022.3.35f1", @"C:\Assets", "test", @"C:\Output", "--junction" };
+        var args3 = new[] { "2022.3.35f1", assetPath, "test", outputPath, "--junction" };
         var config3 = ArgumentParser.Parse(args3);
         Assert.Equal("junction", config3?.LinkMethod);
 
-        var args4 = new[] { "2022.3.35f1", @"C:\Assets", "test", @"C:\Output", "--copy" };
+        var args4 = new[] { "2022.3.35f1", assetPath, "test", outputPath, "--copy" };
         var config4 = ArgumentParser.Parse(args4);
         Assert.Equal("copy", config4?.LinkMethod);
     }
@@ -89,24 +106,29 @@ public class ArgumentParserTests
     [Fact]
     public void Parse_WithTempOptions_ShouldParseCorrectly()
     {
-        var args1 = new[] { "2022.3.35f1", @"C:\Assets", "test", @"C:\Output", "--keep-temp" };
+        var assetPath = GetTestPath("Assets");
+        var outputPath = GetTestPath("Output");
+        var args1 = new[] { "2022.3.35f1", assetPath, "test", outputPath, "--keep-temp" };
         var config1 = ArgumentParser.Parse(args1);
         Assert.True(config1?.KeepTempProject);
 
-        var args2 = new[] { "2022.3.35f1", @"C:\Assets", "test", @"C:\Output", "--clean-temp" };
+        var args2 = new[] { "2022.3.35f1", assetPath, "test", outputPath, "--clean-temp" };
         var config2 = ArgumentParser.Parse(args2);
         Assert.True(config2?.CleanTempProject);
 
-        var args3 = new[] { "2022.3.35f1", @"C:\Assets", "test", @"C:\Output", "--temp-project", @"C:\CustomTemp" };
+        var customTempPath = GetTestPath("CustomTemp");
+        var args3 = new[] { "2022.3.35f1", assetPath, "test", outputPath, "--temp-project", customTempPath };
         var config3 = ArgumentParser.Parse(args3);
-        Assert.Equal(@"C:\CustomTemp", config3?.TempProjectPath);
+        Assert.Equal(Path.GetFullPath(customTempPath), config3?.TempProjectPath);
     }
 
     [Fact]
     public void Parse_WithExplicitUnityVersion_ShouldParseCorrectly()
     {
         using var tempUnity = new TempUnityFile("TestUnity");
-        var args = new[] { tempUnity.Path, @"C:\Assets", "test", @"C:\Output", "--unity-version", "2022.3.35f1" };
+        var assetPath = GetTestPath("Assets");
+        var outputPath = GetTestPath("Output");
+        var args = new[] { tempUnity.Path, assetPath, "test", outputPath, "--unity-version", "2022.3.35f1" };
         var config = ArgumentParser.Parse(args);
         
         Assert.NotNull(config);
