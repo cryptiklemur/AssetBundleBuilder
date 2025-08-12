@@ -1,4 +1,5 @@
 using System.IO;
+using System.Runtime.InteropServices;
 using Xunit;
 
 namespace CryptikLemur.AssetBundleBuilder.Tests;
@@ -9,8 +10,13 @@ public class ArgumentParserTests
     {
         public string Path { get; }
         
-        public TempUnityFile(string fileName)
+        public TempUnityFile(string baseFileName)
         {
+            // Use platform-appropriate Unity executable name
+            var fileName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) 
+                ? $"{baseFileName}.exe" 
+                : baseFileName;
+            
             Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), fileName);
             File.WriteAllText(Path, "dummy");
         }
@@ -39,7 +45,7 @@ public class ArgumentParserTests
     [Fact]
     public void Parse_WithUnityPath_ShouldParseCorrectly()
     {
-        using var tempUnity = new TempUnityFile("Unity.exe");
+        using var tempUnity = new TempUnityFile("Unity");
         var args = new[] { tempUnity.Path, @"C:\Assets", "test.bundle", @"C:\Output" };
         var config = ArgumentParser.Parse(args);
         
@@ -99,7 +105,7 @@ public class ArgumentParserTests
     [Fact]
     public void Parse_WithExplicitUnityVersion_ShouldParseCorrectly()
     {
-        using var tempUnity = new TempUnityFile("TestUnity.exe");
+        using var tempUnity = new TempUnityFile("TestUnity");
         var args = new[] { tempUnity.Path, @"C:\Assets", "test", @"C:\Output", "--unity-version", "2022.3.35f1" };
         var config = ArgumentParser.Parse(args);
         
