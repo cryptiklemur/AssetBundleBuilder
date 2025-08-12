@@ -69,7 +69,7 @@ assetbundlebuilder 2022.3.5f1 "/path/to/assets" "mybundle" "/path/to/output" --t
 ## Command Reference
 
 ```
-assetbundlebuilder [unity-path-or-version] <asset-directory> <bundle-name> [output-directory] [options]
+assetbundlebuilder <unity-path-or-version> <asset-directory> <bundle-name> [output-directory] [options]
 ```
 
 ### Arguments
@@ -201,18 +201,7 @@ assetbundlebuilder 2022.3.5f1 "/path/to/assets" "mybundle" "/path/to/output" --k
 dotnet tool uninstall --global CryptikLemur.AssetBundleBuilder
 ```
 
-### Chocolatey
-```powershell
-choco uninstall assetbundlebuilder
-```
-
-### Homebrew
-```bash
-brew uninstall assetbundlebuilder
-```
-
 ## Support
 
 - **Issues**: [GitHub Issues](https://github.com/CryptikLemur/AssetBundleBuilder/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/CryptikLemur/AssetBundleBuilder/discussions)
 - **RimWorld Modding**: [RimWorld Discord](https://discord.gg/rimworld)

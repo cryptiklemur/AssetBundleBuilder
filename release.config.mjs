@@ -23,7 +23,7 @@ export default {
                     "cd publish/linux-x64 && zip -r ../../zips/AssetBundleBuilder-linux-x64-v${nextRelease.version}.zip . && cd ../..",
                     "cd publish/osx-x64 && zip -r ../../zips/AssetBundleBuilder-osx-x64-v${nextRelease.version}.zip . && cd ../.."
                 ].join(" && "),
-                "publishCmd": "dotnet nuget push AssetBundleBuilder/bin/Release/*.nupkg --api-key ${NUGET_API_KEY} --source https://api.nuget.org/v3/index.json --skip-duplicate"
+                "publishCmd": `dotnet nuget push AssetBundleBuilder/bin/Release/*.nupkg --api-key ${process.env.NUGET_API_KEY} --source https://api.nuget.org/v3/index.json --skip-duplicate`
             }
         ],
         [
@@ -35,5 +35,6 @@ export default {
                 ]
             }
         ]
-    ]
+    ],
+    tagFormat: "v${version}",
 };
