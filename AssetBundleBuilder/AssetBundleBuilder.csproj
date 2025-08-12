@@ -23,6 +23,7 @@
         <PackAsTool>true</PackAsTool>
         <ToolCommandName>assetbundlebuilder</ToolCommandName>
         <Title>Unity Asset Bundle Builder for RimWorld Mods</Title>
+        <PackageReadmeFile>../README.md</PackageReadmeFile>
         <Description>A standalone command-line tool for building Unity asset bundles for RimWorld mods. Automatically creates temporary Unity projects and builds asset bundles with proper compression and platform support.</Description>
         <PackageTags>unity rimworld modding assetbundle gamedev cli global-tool</PackageTags>
         <PackageProjectUrl>https://github.com/CryptikLemur/AssetBundleBuilder</PackageProjectUrl>
