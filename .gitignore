@@ -26,6 +26,8 @@ CLAUDE.md
 *.nuget.props
 *.nuget.targets
 
+node_modules
+
 # Publish directories
 [Pp]ublish/
 

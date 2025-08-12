@@ -68,7 +68,7 @@ jobs:
         node-version: '20'
     
     - name: Install npm dependencies
-      run: npm install
+      run: npm ci
     
     - name: Run semantic-release
       env:
