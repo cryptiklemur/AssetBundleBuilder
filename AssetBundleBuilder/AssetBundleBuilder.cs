@@ -96,6 +96,7 @@ public static class Program {
             var unityArgs = new[]
             {
                 "-batchmode",
+                "-nographics",
                 "-quit",
                 "-logfile",
                 "-",
