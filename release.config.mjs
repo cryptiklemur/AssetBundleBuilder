@@ -18,10 +18,10 @@ export default {
                     "dotnet publish AssetBundleBuilder/AssetBundleBuilder.csproj -c Release -r osx-x64 --self-contained -p:PublishSingleFile=true -o ./publish/osx-x64",
                     // Create zips directory
                     "mkdir -p zips",
-                    // Create platform-specific zips on Windows (using PowerShell)
-                    "powershell -Command \"Compress-Archive -Path './publish/win-x64/*' -DestinationPath './zips/AssetBundleBuilder-win-x64-${nextRelease.version}.zip' -Force\"",
-                    "powershell -Command \"Compress-Archive -Path './publish/linux-x64/*' -DestinationPath './zips/AssetBundleBuilder-linux-x64-${nextRelease.version}.zip' -Force\"",
-                    "powershell -Command \"Compress-Archive -Path './publish/osx-x64/*' -DestinationPath './zips/AssetBundleBuilder-osx-x64-${nextRelease.version}.zip' -Force\""
+                    // Create platform-specific zips using Linux commands
+                    "cd publish/win-x64 && zip -r ../../zips/AssetBundleBuilder-win-x64-v${nextRelease.version}.zip . && cd ../..",
+                    "cd publish/linux-x64 && zip -r ../../zips/AssetBundleBuilder-linux-x64-v${nextRelease.version}.zip . && cd ../..",
+                    "cd publish/osx-x64 && zip -r ../../zips/AssetBundleBuilder-osx-x64-v${nextRelease.version}.zip . && cd ../.."
                 ].join(" && "),
                 "publishCmd": "dotnet nuget push AssetBundleBuilder/bin/Release/*.nupkg --api-key ${NUGET_API_KEY} --source https://api.nuget.org/v3/index.json --skip-duplicate"
             }
@@ -35,6 +35,5 @@ export default {
                 ]
             }
         ]
-    ],
-    tagFormat: "${version}",
+    ]
 };

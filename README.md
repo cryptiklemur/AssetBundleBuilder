@@ -30,21 +30,21 @@ Extract and run the executable directly - no installation required!
 
 ```bash
 # Auto-find Unity and build asset bundles
-assetbundlebuilder 2022.3.5f1 "/path/to/your/mod/assets" "/path/to/output/directory" "mybundle"
+assetbundlebuilder 2022.3.5f1 "/path/to/your/mod/assets" "mybundle" "/path/to/output/directory"
 ```
 
 ### With Custom Bundle Name
 
 ```bash
 # Specify a custom bundle name
-assetbundlebuilder 2022.3.5f1 "/path/to/assets" "/path/to/output" "author.modname"
+assetbundlebuilder 2022.3.5f1 "/path/to/assets" "author.modname" "/path/to/output"
 ```
 
 ### Specific Platform
 
 ```bash
 # Build only for Windows
-assetbundlebuilder 2022.3.5f1 "/path/to/assets" "/path/to/output" "mybundle" --target windows
+assetbundlebuilder 2022.3.5f1 "/path/to/assets" "mybundle" "/path/to/output" --target windows
 ```
 
 ## How It Works
@@ -69,21 +69,21 @@ assetbundlebuilder 2022.3.5f1 "/path/to/assets" "/path/to/output" "mybundle" --t
 ## Command Reference
 
 ```
-assetbundlebuilder [unity-path-or-version] <asset-directory> <output-directory> <bundle-name> [options]
+assetbundlebuilder [unity-path-or-version] <asset-directory> <bundle-name> [output-directory] [options]
 ```
 
 ### Arguments
 
 - **unity-path-or-version**: Either Unity version (e.g., `2022.3.5f1`) or full path to Unity executable
 - **asset-directory**: Directory containing your mod's assets (textures, sounds, etc.)
-- **output-directory**: Where to create the asset bundles
 - **bundle-name**: Name for the asset bundle (e.g., "mymod", "author.modname")
+- **output-directory**: Where to create the asset bundles (optional, defaults to current directory)
 
 ### Options
 
 - `--unity-version <version>` - Explicitly specify Unity version
 - `--bundle-name <name>` - Override bundle name (alternative to positional argument)
-- `--target <target>` - Build target: `windows`, `mac`, `linux`, or `all` (default)
+- `--target <target>` - Build target: `windows`, `mac`, or `linux` (default: `windows`)
 - `--temp-project <path>` - Custom location for temporary Unity project
 - `--keep-temp` - Don't delete temporary project (for debugging)
 
@@ -92,31 +92,31 @@ assetbundlebuilder [unity-path-or-version] <asset-directory> <output-directory> 
 ### Windows
 
 ```powershell
-# Using Chocolatey-installed version
-assetbundlebuilder 2022.3.5f1 "C:\MyMod\Assets" "C:\MyMod\Output" "mymod"
+# Using .NET global tool
+assetbundlebuilder 2022.3.5f1 "C:\MyMod\Assets" "mymod" "C:\MyMod\Output"
 
 # Using specific Unity installation
-assetbundlebuilder "C:\Unity\2022.3.5f1\Editor\Unity.exe" "C:\MyMod\Assets" "C:\MyMod\Output" "mymod"
+assetbundlebuilder "C:\Unity\2022.3.5f1\Editor\Unity.exe" "C:\MyMod\Assets" "mymod" "C:\MyMod\Output"
 ```
 
 ### macOS
 
 ```bash
-# Using Homebrew-installed version
-assetbundlebuilder 2022.3.5f1 "/Users/me/MyMod/Assets" "/Users/me/MyMod/Output" "mymod"
+# Using .NET global tool
+assetbundlebuilder 2022.3.5f1 "/Users/me/MyMod/Assets" "mymod" "/Users/me/MyMod/Output"
 
 # Using specific Unity installation
-assetbundlebuilder "/Applications/Unity/Hub/Editor/2022.3.5f1/Unity.app/Contents/MacOS/Unity" "/Users/me/MyMod/Assets" "/Users/me/MyMod/Output" "mymod"
+assetbundlebuilder "/Applications/Unity/Hub/Editor/2022.3.5f1/Unity.app/Contents/MacOS/Unity" "/Users/me/MyMod/Assets" "mymod" "/Users/me/MyMod/Output"
 ```
 
 ### Linux
 
 ```bash
 # Using .NET Global Tool
-assetbundlebuilder 2022.3.5f1 "/home/user/MyMod/Assets" "/home/user/MyMod/Output" "mymod"
+assetbundlebuilder 2022.3.5f1 "/home/user/MyMod/Assets" "mymod" "/home/user/MyMod/Output"
 
 # Build only Linux bundles
-assetbundlebuilder 2022.3.5f1 "/home/user/MyMod/Assets" "/home/user/MyMod/Output" "mymod" --target linux
+assetbundlebuilder 2022.3.5f1 "/home/user/MyMod/Assets" "mymod" "/home/user/MyMod/Output" --target linux
 ```
 
 ## Unity Installation Paths
@@ -143,10 +143,10 @@ The tool automatically searches these common Unity installation locations:
 
 ```yaml
 - name: Install AssetBundleBuilder
-  run: dotnet tool install --global AssetBundleBuilder.GlobalTool
+  run: dotnet tool install --global CryptikLemur.AssetBundleBuilder
 
 - name: Build Asset Bundles
-  run: assetbundlebuilder 2022.3.5f1 "./Assets" "./Output" "mymod"
+  run: assetbundlebuilder 2022.3.5f1 "./Assets" "mymod" "./Output"
 ```
 
 ### Azure DevOps
@@ -157,9 +157,9 @@ The tool automatically searches these common Unity installation locations:
   inputs:
     command: 'custom'
     custom: 'tool'
-    arguments: 'install --global AssetBundleBuilder.GlobalTool'
+    arguments: 'install --global CryptikLemur.AssetBundleBuilder'
 
-- script: assetbundlebuilder 2022.3.5f1 "$(Build.SourcesDirectory)/Assets" "$(Build.ArtifactStagingDirectory)" "mymod"
+- script: assetbundlebuilder 2022.3.5f1 "$(Build.SourcesDirectory)/Assets" "mymod" "$(Build.ArtifactStagingDirectory)"
   displayName: 'Build Asset Bundles'
 ```
 
@@ -185,20 +185,20 @@ dotnet tool install --global AssetBundleBuilder.GlobalTool
 ### Invalid Bundle Name
 ```bash
 # Use a valid bundle name (alphanumeric, dots, underscores)
-assetbundlebuilder 2022.3.5f1 "/path/to/assets" "/path/to/output" "valid_bundle_name"
+assetbundlebuilder 2022.3.5f1 "/path/to/assets" "valid_bundle_name" "/path/to/output"
 ```
 
 ### Debugging
 ```bash
 # Keep temporary project for inspection
-assetbundlebuilder 2022.3.5f1 "/path/to/assets" "/path/to/output" "mybundle" --keep-temp
+assetbundlebuilder 2022.3.5f1 "/path/to/assets" "mybundle" "/path/to/output" --keep-temp
 ```
 
 ## Uninstallation
 
 ### .NET Global Tool
 ```bash
-dotnet tool uninstall --global AssetBundleBuilder.GlobalTool
+dotnet tool uninstall --global CryptikLemur.AssetBundleBuilder
 ```
 
 ### Chocolatey
@@ -213,6 +213,6 @@ brew uninstall assetbundlebuilder
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/CryptikLemur/RimworldCosmere/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/CryptikLemur/RimworldCosmere/discussions)
+- **Issues**: [GitHub Issues](https://github.com/CryptikLemur/AssetBundleBuilder/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/CryptikLemur/AssetBundleBuilder/discussions)
 - **RimWorld Modding**: [RimWorld Discord](https://discord.gg/rimworld)
