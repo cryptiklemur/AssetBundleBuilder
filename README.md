@@ -1,19 +1,19 @@
 # AssetBundleBuilder
 
-A command-line tool for building Unity asset bundles for RimWorld mods. **No repository cloning or Unity project setup required!**
+Command line tool for building Unity asset bundles for RimWorld mods. No repository cloning or Unity project setup required.
 
 ## Prerequisites
 
-⚠️ **Unity Editor Required**: This tool requires Unity Hub and a Unity Editor installation (e.g., 2022.3.35f1) to build asset bundles. The tool will:
-- Auto-detect Unity installations in standard locations
+Unity Editor Required: This tool requires Unity Hub and a Unity Editor installation (e.g., 2022.3.35f1) to build asset bundles. The tool will:
+- Auto detect Unity installations in standard locations
 - Create temporary Unity projects automatically
 - Handle all Unity project configuration
 
-You can download Unity Hub from [unity.com/download](https://unity.com/download) and install the required Unity version through it.
+Download Unity Hub from [unity.com/download](https://unity.com/download) and install the required Unity version through it.
 
 ## Installation
 
-### .NET Global Tool (Recommended - Cross-Platform)
+### .NET Global Tool (Cross Platform)
 
 ```bash
 # Install globally
@@ -23,22 +23,22 @@ dotnet tool install --global CryptikLemur.AssetBundleBuilder
 assetbundlebuilder 2022.3.5f1 "/path/to/assets" "mybundle" "/path/to/output"
 ```
 
-### Manual Installation (No .NET Required)
+### Manual Installation
 
-Download the appropriate executable for your platform from the [**Releases Page**](https://github.com/CryptikLemur/AssetBundleBuilder/releases):
+Download the appropriate executable for your platform from the [Releases Page](https://github.com/CryptikLemur/AssetBundleBuilder/releases):
 
-- **Windows**: `AssetBundleBuilder-win-x64-v1.0.0.zip`
-- **macOS Intel**: `AssetBundleBuilder-osx-x64-v1.0.0.zip`
-- **Linux x64**: `AssetBundleBuilder-linux-x64-v1.0.0.zip`
+- Windows: `AssetBundleBuilder-win-x64-v1.0.0.zip`
+- macOS Intel: `AssetBundleBuilder-osx-x64-v1.0.0.zip`
+- Linux x64: `AssetBundleBuilder-linux-x64-v1.0.0.zip`
 
-Extract and run the executable directly - no installation required!
+Extract and run the executable directly. No installation required.
 
 ## Quick Start
 
 ### Basic Usage
 
 ```bash
-# Auto-find Unity and build asset bundles
+# Auto find Unity and build asset bundles
 assetbundlebuilder 2022.3.5f1 "/path/to/your/mod/assets" "mybundle" "/path/to/output/directory"
 ```
 
@@ -58,22 +58,22 @@ assetbundlebuilder 2022.3.5f1 "/path/to/assets" "mybundle" "/path/to/output" --t
 
 ## How It Works
 
-1. **No Setup Required**: Tool automatically creates a temporary Unity project
-2. **Unity Auto-Discovery**: Finds Unity installations by version number across common paths
-3. **Asset Processing**: Copies your assets and applies proper import settings
-4. **Bundle Creation**: Builds compressed asset bundles with platform-specific optimizations
-5. **Cleanup**: Removes temporary files automatically
+1. Creates a temporary Unity project
+2. Finds Unity installations by version number across common paths
+3. Copies your assets and applies proper import settings
+4. Builds compressed asset bundles with platform specific optimizations
+5. Removes temporary files automatically
 
 ## Supported Features
 
-- ✅ **Unity Version Auto-Discovery** - Just specify the version (e.g., `2022.3.5f1`)
-- ✅ **Cross-Platform** - Windows, macOS, and Linux native executables
-- ✅ **Multiple Build Targets** - Windows, macOS, Linux asset bundles
-- ✅ **Automatic Asset Import Settings** - Textures, audio, shaders
-- ✅ **Terrain Texture Support** - Special handling for terrain assets
-- ✅ **PSD File Support** - Basic Photoshop document import
-- ✅ **Temporary Project Management** - No manual Unity project required
-- ✅ **CI/CD Friendly** - Perfect for automated build pipelines
+- Unity Version Auto Discovery: Just specify the version (e.g., `2022.3.5f1`)
+- Cross Platform: Windows, macOS, and Linux native executables
+- Multiple Build Targets: Windows, macOS, Linux asset bundles
+- Automatic Asset Import Settings: Textures, audio, shaders
+- Terrain Texture Support: Special handling for terrain assets
+- PSD File Support: Basic Photoshop document import
+- Temporary Project Management: No manual Unity project required
+- CI/CD Friendly: Works in automated build pipelines
 
 ## Command Reference
 
@@ -90,11 +90,11 @@ assetbundlebuilder <unity-path-or-version> <asset-directory> <bundle-name> [outp
 
 ### Options
 
-- `--unity-version <version>` - Explicitly specify Unity version
-- `--bundle-name <name>` - Override bundle name (alternative to positional argument)
-- `--target <target>` - Build target: `windows`, `mac`, or `linux` (default: `windows`)
-- `--temp-project <path>` - Custom location for temporary Unity project
-- `--keep-temp` - Don't delete temporary project (for debugging)
+- `--unity-version <version>`: Explicitly specify Unity version
+- `--bundle-name <name>`: Override bundle name (alternative to positional argument)
+- `--target <target>`: Build target: `windows`, `mac`, or `linux` (default: `windows`)
+- `--temp-project <path>`: Custom location for temporary Unity project
+- `--keep-temp`: Don't delete temporary project (for debugging)
 
 ## Examples
 
@@ -212,5 +212,5 @@ dotnet tool uninstall --global CryptikLemur.AssetBundleBuilder
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/CryptikLemur/AssetBundleBuilder/issues)
-- **RimWorld Modding**: [RimWorld Discord](https://discord.gg/rimworld)
+- Issues: [GitHub Issues](https://github.com/CryptikLemur/AssetBundleBuilder/issues)
+- RimWorld Modding: [RimWorld Discord](https://discord.gg/rimworld)

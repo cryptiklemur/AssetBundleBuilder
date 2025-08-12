@@ -1,7 +1,6 @@
 namespace CryptikLemur.AssetBundleBuilder;
 
-public class BuildConfiguration
-{
+public class BuildConfiguration {
     public string UnityPath { get; set; } = string.Empty;
     public string UnityVersion { get; set; } = string.Empty;
     public string AssetDirectory { get; set; } = string.Empty;

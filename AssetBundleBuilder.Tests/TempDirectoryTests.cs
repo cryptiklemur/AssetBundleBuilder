@@ -1,18 +1,25 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace CryptikLemur.AssetBundleBuilder.Tests;
 
-public class TempDirectoryTests : IDisposable
-{
+public class TempDirectoryTests : IDisposable {
     private readonly List<string> _tempDirectoriesToCleanup = new();
 
+    public void Dispose() {
+        foreach (var dir in _tempDirectoriesToCleanup)
+            if (Directory.Exists(dir))
+                try {
+                    var files = Directory.GetFiles(dir, "*", SearchOption.AllDirectories);
+                    foreach (var file in files) File.SetAttributes(file, FileAttributes.Normal);
+                    Directory.Delete(dir, true);
+                }
+                catch {
+                    // Ignore cleanup failures in tests
+                }
+    }
+
     [Fact]
-    public void TempDirectory_ShouldBeCreatedFromHash()
-    {
+    public void TempDirectory_ShouldBeCreatedFromHash() {
         var config = new BuildConfiguration
         {
             AssetDirectory = @"C:\Test\Assets",
@@ -31,8 +38,7 @@ public class TempDirectoryTests : IDisposable
     }
 
     [Fact]
-    public void TempDirectory_SameInputs_ShouldProduceSamePath()
-    {
+    public void TempDirectory_SameInputs_ShouldProduceSamePath() {
         var config1 = new BuildConfiguration
         {
             AssetDirectory = @"C:\Test\Assets",
@@ -54,8 +60,7 @@ public class TempDirectoryTests : IDisposable
     }
 
     [Fact]
-    public void TempDirectory_DifferentInputs_ShouldProduceDifferentPaths()
-    {
+    public void TempDirectory_DifferentInputs_ShouldProduceDifferentPaths() {
         var config1 = new BuildConfiguration
         {
             AssetDirectory = @"C:\Test\Assets",
@@ -82,8 +87,8 @@ public class TempDirectoryTests : IDisposable
     [InlineData(@"C:\Assets", "test.bundle", "linux")]
     [InlineData(@"C:\Assets", "different.bundle", "windows")]
     [InlineData(@"C:\Different\Assets", "test.bundle", "windows")]
-    public void TempDirectory_VariousInputs_ShouldCreateValidPaths(string assetDir, string bundleName, string buildTarget)
-    {
+    public void TempDirectory_VariousInputs_ShouldCreateValidPaths(string assetDir, string bundleName,
+        string buildTarget) {
         var config = new BuildConfiguration
         {
             AssetDirectory = assetDir,
@@ -99,8 +104,7 @@ public class TempDirectoryTests : IDisposable
     }
 
     [Fact]
-    public void TempDirectory_PreExistingPath_ShouldNotOverride()
-    {
+    public void TempDirectory_PreExistingPath_ShouldNotOverride() {
         var config = new BuildConfiguration
         {
             AssetDirectory = @"C:\Test\Assets",
@@ -116,8 +120,7 @@ public class TempDirectoryTests : IDisposable
     }
 
     [Fact]
-    public async Task CleanTempProject_ExistingDirectory_ShouldDeleteDirectory()
-    {
+    public async Task CleanTempProject_ExistingDirectory_ShouldDeleteDirectory() {
         var tempDir = Path.Combine(Path.GetTempPath(), $"AssetBundleBuilder_Test_{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
         var testFile = Path.Combine(tempDir, "test.txt");
@@ -137,8 +140,7 @@ public class TempDirectoryTests : IDisposable
     }
 
     [Fact]
-    public void CleanTempProject_NonExistentDirectory_ShouldReturnTrue()
-    {
+    public void CleanTempProject_NonExistentDirectory_ShouldReturnTrue() {
         var nonExistentDir = Path.Combine(Path.GetTempPath(), $"AssetBundleBuilder_NonExistent_{Guid.NewGuid():N}");
 
         var config = new BuildConfiguration
@@ -153,8 +155,7 @@ public class TempDirectoryTests : IDisposable
     }
 
     [Fact]
-    public async Task CleanTempProject_ReadOnlyFiles_ShouldHandleGracefully()
-    {
+    public async Task CleanTempProject_ReadOnlyFiles_ShouldHandleGracefully() {
         var tempDir = Path.Combine(Path.GetTempPath(), $"AssetBundleBuilder_ReadOnly_{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
         var readOnlyFile = Path.Combine(tempDir, "readonly.txt");
@@ -175,8 +176,7 @@ public class TempDirectoryTests : IDisposable
     }
 
     [Fact]
-    public async Task KeepTempProject_ShouldNotCleanupAfterBuild()
-    {
+    public async Task KeepTempProject_ShouldNotCleanupAfterBuild() {
         var tempDir = Path.Combine(Path.GetTempPath(), $"AssetBundleBuilder_Keep_{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
         var testFile = Path.Combine(tempDir, "test.txt");
@@ -196,8 +196,7 @@ public class TempDirectoryTests : IDisposable
     }
 
     [Fact]
-    public void DefaultBehavior_ShouldCleanupTempProject()
-    {
+    public void DefaultBehavior_ShouldCleanupTempProject() {
         var config = new BuildConfiguration
         {
             KeepTempProject = false
@@ -209,8 +208,7 @@ public class TempDirectoryTests : IDisposable
     }
 
     [Fact]
-    public void TempDirectoryHash_ShouldBe8Characters()
-    {
+    public void TempDirectoryHash_ShouldBe8Characters() {
         var config = new BuildConfiguration
         {
             AssetDirectory = @"C:\Test\Assets",
@@ -222,68 +220,35 @@ public class TempDirectoryTests : IDisposable
 
         var dirName = Path.GetFileName(config.TempProjectPath);
         var hashPart = dirName.Replace("AssetBundleBuilder_", "");
-        
+
         Assert.Equal(8, hashPart.Length);
         Assert.All(hashPart, c => Assert.True(char.IsLetterOrDigit(c)));
     }
 
-    private static void SetTempProjectPath(BuildConfiguration config)
-    {
-        if (string.IsNullOrEmpty(config.TempProjectPath))
-        {
+    private static void SetTempProjectPath(BuildConfiguration config) {
+        if (string.IsNullOrEmpty(config.TempProjectPath)) {
             var hashInput = $"{config.AssetDirectory}|{config.BundleName}|{config.BuildTarget}";
             var hash = HashUtility.ComputeHash(hashInput);
             config.TempProjectPath = Path.Combine(Path.GetTempPath(), $"AssetBundleBuilder_{hash}");
         }
     }
 
-    private static bool CleanExistingTempProject(BuildConfiguration config)
-    {
+    private static bool CleanExistingTempProject(BuildConfiguration config) {
         if (config.CleanTempProject && Directory.Exists(config.TempProjectPath))
-        {
-            try
-            {
+            try {
                 var files = Directory.GetFiles(config.TempProjectPath, "*", SearchOption.AllDirectories);
-                foreach (var file in files)
-                {
-                    File.SetAttributes(file, FileAttributes.Normal);
-                }
+                foreach (var file in files) File.SetAttributes(file, FileAttributes.Normal);
                 Directory.Delete(config.TempProjectPath, true);
                 return true;
             }
-            catch
-            {
+            catch {
                 return false;
             }
-        }
+
         return true;
     }
 
-    private static bool ShouldCleanupTempProject(BuildConfiguration config)
-    {
+    private static bool ShouldCleanupTempProject(BuildConfiguration config) {
         return !config.KeepTempProject;
-    }
-
-    public void Dispose()
-    {
-        foreach (var dir in _tempDirectoriesToCleanup)
-        {
-            if (Directory.Exists(dir))
-            {
-                try
-                {
-                    var files = Directory.GetFiles(dir, "*", SearchOption.AllDirectories);
-                    foreach (var file in files)
-                    {
-                        File.SetAttributes(file, FileAttributes.Normal);
-                    }
-                    Directory.Delete(dir, true);
-                }
-                catch
-                {
-                    // Ignore cleanup failures in tests
-                }
-            }
-        }
     }
 }

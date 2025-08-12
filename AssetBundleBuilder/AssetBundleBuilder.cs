@@ -3,35 +3,26 @@ using System.Runtime.InteropServices;
 
 namespace CryptikLemur.AssetBundleBuilder;
 
-public static class Program
-{
-    private static int Main(string[] args)
-    {
-        if (args.Length < 2)
-        {
+public static class Program {
+    private static int Main(string[] args) {
+        if (args.Length < 2) {
             ShowHelp();
             return 1;
         }
 
         var config = ArgumentParser.Parse(args);
-        if (config == null)
-        {
-            Console.WriteLine("Error: Invalid arguments provided.");
-            ShowHelp();
-            return 1;
-        }
+        if (config != null) return BuildAssetBundle(config);
 
-        return BuildAssetBundle(config);
+        Console.WriteLine("Error: Invalid arguments provided.");
+        ShowHelp();
+        return 1;
     }
 
-    public static int BuildAssetBundle(BuildConfiguration config)
-    {
+    public static int BuildAssetBundle(BuildConfiguration config) {
         // If unity version is specified, try to find the Unity executable
-        if (!string.IsNullOrEmpty(config.UnityVersion) && string.IsNullOrEmpty(config.UnityPath))
-        {
+        if (!string.IsNullOrEmpty(config.UnityVersion) && string.IsNullOrEmpty(config.UnityPath)) {
             config.UnityPath = UnityPathFinder.FindUnityExecutable(config.UnityVersion) ?? "";
-            if (string.IsNullOrEmpty(config.UnityPath))
-            {
+            if (string.IsNullOrEmpty(config.UnityPath)) {
                 Console.WriteLine($"Error: Could not find Unity {config.UnityVersion} installation.");
                 Console.WriteLine(
                     "Searched common installation paths. Please specify the full path to Unity.exe instead.");
@@ -42,20 +33,17 @@ public static class Program
         }
 
         // Validate paths
-        if (string.IsNullOrEmpty(config.UnityPath))
-        {
+        if (string.IsNullOrEmpty(config.UnityPath)) {
             Console.WriteLine("Error: Unity path not specified and could not be auto-detected.");
             return 1;
         }
 
-        if (!File.Exists(config.UnityPath))
-        {
+        if (!File.Exists(config.UnityPath)) {
             Console.WriteLine($"Error: Unity executable not found at '{config.UnityPath}'");
             return 1;
         }
 
-        if (!Directory.Exists(config.AssetDirectory))
-        {
+        if (!Directory.Exists(config.AssetDirectory)) {
             Console.WriteLine($"Error: Asset directory not found at '{config.AssetDirectory}'");
             return 1;
         }
@@ -67,8 +55,7 @@ public static class Program
         Console.WriteLine($"Unity build target: {unityBuildTarget}");
 
         // Create temporary Unity project if not specified
-        if (string.IsNullOrEmpty(config.TempProjectPath))
-        {
+        if (string.IsNullOrEmpty(config.TempProjectPath)) {
             // Create hash from input parameters for consistent temp directory naming
             var hashInput = $"{config.AssetDirectory}|{config.BundleName}|{config.BuildTarget}";
             var hash = HashUtility.ComputeHash(hashInput);
@@ -76,16 +63,15 @@ public static class Program
         }
 
         // Handle temp project cleanup if requested
-        if (config.CleanTempProject && Directory.Exists(config.TempProjectPath))
-            try
-            {
+        if (config.CleanTempProject && Directory.Exists(config.TempProjectPath)) {
+            try {
                 Directory.Delete(config.TempProjectPath, true);
                 Console.WriteLine($"Cleaned up existing temp project: {config.TempProjectPath}");
             }
-            catch (Exception ex)
-            {
+            catch (Exception ex) {
                 Console.WriteLine($"Warning: Could not clean up existing temp project: {ex.Message}");
             }
+        }
 
         Console.WriteLine("Starting Unity Asset Bundle Builder");
         Console.WriteLine($"Unity Path: {config.UnityPath}");
@@ -96,11 +82,9 @@ public static class Program
         Console.WriteLine($"Build Target: {config.BuildTarget}");
         Console.WriteLine();
 
-        try
-        {
+        try {
             // Ensure output directory exists
-            if (!Directory.Exists(config.OutputDirectory))
-            {
+            if (!Directory.Exists(config.OutputDirectory)) {
                 Directory.CreateDirectory(config.OutputDirectory);
                 Console.WriteLine($"Created output directory: {config.OutputDirectory}");
             }
@@ -138,8 +122,7 @@ public static class Program
             };
 
             Console.WriteLine("Launching Unity...");
-            using (var process = Process.Start(processInfo))
-            {
+            using (var process = Process.Start(processInfo)) {
                 if (process == null) throw new Exception("Launching Unity failed.");
 
                 // Read output asynchronously
@@ -159,8 +142,7 @@ public static class Program
 
                 process.WaitForExit();
 
-                if (process.ExitCode != 0)
-                {
+                if (process.ExitCode != 0) {
                     Console.WriteLine($"Error: Unity failed with exit code {process.ExitCode}");
                     return process.ExitCode;
                 }
@@ -169,30 +151,26 @@ public static class Program
             Console.WriteLine("Asset bundles built successfully!");
             return 0;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             Console.WriteLine($"Error: {ex.Message}");
             return 1;
         }
-        finally
-        {
+        finally {
             // Clean up temporary project unless requested to keep it
-            if (!config.KeepTempProject && Directory.Exists(config.TempProjectPath))
-                try
-                {
+            if (!config.KeepTempProject && Directory.Exists(config.TempProjectPath)) {
+                try {
                     Directory.Delete(config.TempProjectPath, true);
                     Console.WriteLine($"Cleaned up temporary project: {config.TempProjectPath}");
                 }
-                catch (Exception ex)
-                {
+                catch (Exception ex) {
                     Console.WriteLine($"Warning: Could not clean up temporary project: {ex.Message}");
                 }
+            }
             else if (config.KeepTempProject) Console.WriteLine($"Temporary project kept at: {config.TempProjectPath}");
         }
     }
 
-    private static void ShowHelp()
-    {
+    private static void ShowHelp() {
         Console.WriteLine("AssetBundleBuilder - Unity Asset Bundle Builder for RimWorld Mods");
         Console.WriteLine();
         Console.WriteLine(
@@ -231,8 +209,7 @@ public static class Program
     }
 
     private static void CreateUnityProject(string projectPath, string assetDirectory, string bundleName,
-        string linkMethod)
-    {
+        string linkMethod) {
         Console.WriteLine($"Creating temporary Unity project at: {projectPath}");
 
         // Create project structure
@@ -259,24 +236,21 @@ public static class Program
     }
 
     // Include the embedded C# scripts here...
-    private static void CreateModAssetBundleBuilderScript(string editorPath)
-    {
+    private static void CreateModAssetBundleBuilderScript(string editorPath) {
         var sourceFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "UnityScripts",
             "ModAssetBundleBuilder.cs");
         var targetFile = Path.Combine(editorPath, "ModAssetBundleBuilder.cs");
         File.Copy(sourceFile, targetFile, true);
     }
 
-    private static void CreateAssetLabelerScript(string editorPath)
-    {
+    private static void CreateAssetLabelerScript(string editorPath) {
         var sourceFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "UnityScripts", "AssetLabeler.cs");
         var targetFile = Path.Combine(editorPath, "AssetLabeler.cs");
         File.Copy(sourceFile, targetFile, true);
     }
 
     // ReSharper disable once InconsistentNaming
-    private static void CreatePSDMatteUtilityScript(string editorPath)
-    {
+    private static void CreatePSDMatteUtilityScript(string editorPath) {
         var sourceFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "UnityScripts", "PSDMatteUtility.cs");
         var targetFile = Path.Combine(editorPath, "PSDMatteUtility.cs");
         File.Copy(sourceFile, targetFile, true);
@@ -284,8 +258,7 @@ public static class Program
 
     // Unity scripts are now copied from UnityScripts/ directory instead of being embedded
 
-    private static void LinkAssets(string sourceDirectory, string targetPath, string linkMethod)
-    {
+    private static void LinkAssets(string sourceDirectory, string targetPath, string linkMethod) {
         Console.WriteLine($"Linking assets using method: {linkMethod}");
         Console.WriteLine($"Source: {sourceDirectory}");
         Console.WriteLine($"Target: {targetPath}");
@@ -297,8 +270,7 @@ public static class Program
         var parentDir = Path.GetDirectoryName(targetPath)!;
         if (!Directory.Exists(parentDir)) Directory.CreateDirectory(parentDir);
 
-        switch (linkMethod.ToLower())
-        {
+        switch (linkMethod.ToLower()) {
             case "copy":
                 CopyDirectory(sourceDirectory, targetPath);
                 Console.WriteLine("Assets copied successfully.");
@@ -321,8 +293,7 @@ public static class Program
     }
 
     // CopyDirectory helper method
-    private static void CopyDirectory(string sourceDir, string destDir)
-    {
+    private static void CopyDirectory(string sourceDir, string destDir) {
         Directory.CreateDirectory(destDir);
 
         foreach (var dirPath in Directory.GetDirectories(sourceDir, "*", SearchOption.AllDirectories))
@@ -332,58 +303,51 @@ public static class Program
             File.Copy(newPath, newPath.Replace(sourceDir, destDir), true);
     }
 
-    private static void CreateSymbolicLink(string sourceDirectory, string targetPath)
-    {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
+    private static void CreateSymbolicLink(string sourceDirectory, string targetPath) {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
             var result = RunCommand("mklink", $"/D \"{targetPath}\" \"{sourceDirectory}\"");
             if (result != 0)
                 throw new InvalidOperationException($"Failed to create symbolic link. Exit code: {result}");
         }
-        else
-        {
+        else {
             var result = RunCommand("ln", $"-s \"{sourceDirectory}\" \"{targetPath}\"");
             if (result != 0)
                 throw new InvalidOperationException($"Failed to create symbolic link. Exit code: {result}");
         }
     }
 
-    private static void CreateHardLink(string sourceDirectory, string targetPath)
-    {
+    private static void CreateHardLink(string sourceDirectory, string targetPath) {
         // Hard links work differently - we need to recursively create hard links for files
         Directory.CreateDirectory(targetPath);
 
-        foreach (var dirPath in Directory.GetDirectories(sourceDirectory, "*", SearchOption.AllDirectories))
-        {
+        foreach (var dirPath in Directory.GetDirectories(sourceDirectory, "*", SearchOption.AllDirectories)) {
             var relativePath = Path.GetRelativePath(sourceDirectory, dirPath);
             var targetDirPath = Path.Combine(targetPath, relativePath);
             Directory.CreateDirectory(targetDirPath);
         }
 
-        foreach (var filePath in Directory.GetFiles(sourceDirectory, "*.*", SearchOption.AllDirectories))
-        {
+        foreach (var filePath in Directory.GetFiles(sourceDirectory, "*.*", SearchOption.AllDirectories)) {
             var relativePath = Path.GetRelativePath(sourceDirectory, filePath);
             var targetFilePath = Path.Combine(targetPath, relativePath);
 
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
                 var result = RunCommand("mklink", $"/H \"{targetFilePath}\" \"{filePath}\"");
-                if (result != 0)
+                if (result != 0) {
                     throw new InvalidOperationException(
                         $"Failed to create hard link for {filePath}. Exit code: {result}");
+                }
             }
-            else
-            {
+            else {
                 var result = RunCommand("ln", $"\"{filePath}\" \"{targetFilePath}\"");
-                if (result != 0)
+                if (result != 0) {
                     throw new InvalidOperationException(
                         $"Failed to create hard link for {filePath}. Exit code: {result}");
+                }
             }
         }
     }
 
-    private static void CreateJunction(string sourceDirectory, string targetPath)
-    {
+    private static void CreateJunction(string sourceDirectory, string targetPath) {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             throw new PlatformNotSupportedException("Junctions are only supported on Windows.");
 
@@ -392,13 +356,12 @@ public static class Program
             throw new InvalidOperationException($"Failed to create junction. Exit code: {result}");
     }
 
-    private static int RunCommand(string command, string arguments)
-    {
+    private static int RunCommand(string command, string arguments) {
         ProcessStartInfo processInfo;
-        
+
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && command == "mklink")
-        {
             // mklink is a built-in Windows command, must be run through cmd.exe
+        {
             processInfo = new ProcessStartInfo
             {
                 FileName = "cmd.exe",
@@ -409,8 +372,7 @@ public static class Program
                 CreateNoWindow = true
             };
         }
-        else
-        {
+        else {
             processInfo = new ProcessStartInfo
             {
                 FileName = command,
@@ -430,8 +392,7 @@ public static class Program
         return process.ExitCode;
     }
 
-    private static string ConvertBuildTarget(string userBuildTarget)
-    {
+    private static string ConvertBuildTarget(string userBuildTarget) {
         return userBuildTarget.ToLower() switch
         {
             "windows" => "StandaloneWindows64",

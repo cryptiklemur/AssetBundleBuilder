@@ -1,49 +1,24 @@
-using System.IO;
 using System.Runtime.InteropServices;
 using Xunit;
 
 namespace CryptikLemur.AssetBundleBuilder.Tests;
 
-public class ArgumentParserTests
-{
-    private static string GetTestPath(string relativePath)
-    {
+public class ArgumentParserTests {
+    private static string GetTestPath(string relativePath) {
         // Create cross-platform test paths
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             return Path.Combine("C:", relativePath);
-        else
-            return Path.Combine("/", relativePath);
+
+        return Path.Combine("/", relativePath);
     }
-    
-    private class TempUnityFile : IDisposable
-    {
-        public string Path { get; }
-        
-        public TempUnityFile(string baseFileName)
-        {
-            // Use platform-appropriate Unity executable name
-            var fileName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) 
-                ? $"{baseFileName}.exe" 
-                : baseFileName;
-            
-            Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), fileName);
-            File.WriteAllText(Path, "dummy");
-        }
-        
-        public void Dispose()
-        {
-            if (File.Exists(Path))
-                File.Delete(Path);
-        }
-    }
+
     [Fact]
-    public void Parse_MinimalArgs_ShouldParseCorrectly()
-    {
+    public void Parse_MinimalArgs_ShouldParseCorrectly() {
         var assetPath = GetTestPath("Assets");
         var outputPath = GetTestPath("Output");
         var args = new[] { "2022.3.35f1", assetPath, "test.bundle", outputPath };
         var config = ArgumentParser.Parse(args);
-        
+
         Assert.NotNull(config);
         Assert.Equal("2022.3.35f1", config.UnityVersion);
         Assert.Equal(Path.GetFullPath(assetPath), config.AssetDirectory);
@@ -54,14 +29,13 @@ public class ArgumentParserTests
     }
 
     [Fact]
-    public void Parse_WithUnityPath_ShouldParseCorrectly()
-    {
+    public void Parse_WithUnityPath_ShouldParseCorrectly() {
         using var tempUnity = new TempUnityFile("Unity");
         var assetPath = GetTestPath("Assets");
         var outputPath = GetTestPath("Output");
         var args = new[] { tempUnity.Path, assetPath, "test.bundle", outputPath };
         var config = ArgumentParser.Parse(args);
-        
+
         Assert.NotNull(config);
         Assert.Equal(tempUnity.Path, config.UnityPath);
         Assert.Equal(Path.GetFullPath(assetPath), config.AssetDirectory);
@@ -70,20 +44,18 @@ public class ArgumentParserTests
     }
 
     [Fact]
-    public void Parse_WithBuildTarget_ShouldParseCorrectly()
-    {
+    public void Parse_WithBuildTarget_ShouldParseCorrectly() {
         var assetPath = GetTestPath("Assets");
         var outputPath = GetTestPath("Output");
         var args = new[] { "2022.3.35f1", assetPath, "test.bundle", outputPath, "--target", "windows" };
         var config = ArgumentParser.Parse(args);
-        
+
         Assert.NotNull(config);
         Assert.Equal("windows", config.BuildTarget);
     }
 
     [Fact]
-    public void Parse_WithLinkMethods_ShouldParseCorrectly()
-    {
+    public void Parse_WithLinkMethods_ShouldParseCorrectly() {
         var assetPath = GetTestPath("Assets");
         var outputPath = GetTestPath("Output");
         var args1 = new[] { "2022.3.35f1", assetPath, "test", outputPath, "--symlink" };
@@ -104,8 +76,7 @@ public class ArgumentParserTests
     }
 
     [Fact]
-    public void Parse_WithTempOptions_ShouldParseCorrectly()
-    {
+    public void Parse_WithTempOptions_ShouldParseCorrectly() {
         var assetPath = GetTestPath("Assets");
         var outputPath = GetTestPath("Output");
         var args1 = new[] { "2022.3.35f1", assetPath, "test", outputPath, "--keep-temp" };
@@ -123,36 +94,52 @@ public class ArgumentParserTests
     }
 
     [Fact]
-    public void Parse_WithExplicitUnityVersion_ShouldParseCorrectly()
-    {
+    public void Parse_WithExplicitUnityVersion_ShouldParseCorrectly() {
         using var tempUnity = new TempUnityFile("TestUnity");
         var assetPath = GetTestPath("Assets");
         var outputPath = GetTestPath("Output");
         var args = new[] { tempUnity.Path, assetPath, "test", outputPath, "--unity-version", "2022.3.35f1" };
         var config = ArgumentParser.Parse(args);
-        
+
         Assert.NotNull(config);
         Assert.Equal(tempUnity.Path, config.UnityPath);
         Assert.Equal("2022.3.35f1", config.UnityVersion);
     }
 
     [Fact]
-    public void Parse_TooFewArgs_ShouldReturnNull()
-    {
+    public void Parse_TooFewArgs_ShouldReturnNull() {
         var args = new[] { "2022.3.35f1" };
         var config = ArgumentParser.Parse(args);
         Assert.Null(config);
     }
 
     [Fact]
-    public void Parse_WithRelativePaths_ShouldConvertToAbsolute()
-    {
+    public void Parse_WithRelativePaths_ShouldConvertToAbsolute() {
         var currentDir = Directory.GetCurrentDirectory();
         var args = new[] { "2022.3.35f1", "Assets", "test", "Output" };
         var config = ArgumentParser.Parse(args);
-        
+
         Assert.NotNull(config);
         Assert.Equal(Path.GetFullPath(Path.Combine(currentDir, "Assets")), config.AssetDirectory);
         Assert.Equal(Path.GetFullPath(Path.Combine(currentDir, "Output")), config.OutputDirectory);
+    }
+
+    private class TempUnityFile : IDisposable {
+        public TempUnityFile(string baseFileName) {
+            // Use platform-appropriate Unity executable name
+            var fileName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+                ? $"{baseFileName}.exe"
+                : baseFileName;
+
+            Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), fileName);
+            File.WriteAllText(Path, "dummy");
+        }
+
+        public string Path { get; }
+
+        public void Dispose() {
+            if (File.Exists(Path))
+                File.Delete(Path);
+        }
     }
 }

@@ -1,84 +1,65 @@
 namespace CryptikLemur.AssetBundleBuilder;
 
-public static class ArgumentParser
-{
-    public static BuildConfiguration? Parse(string[] args)
-    {
-        if (args.Length < 3)
-        {
-            return null;
-        }
+public static class ArgumentParser {
+    public static BuildConfiguration? Parse(string[] args) {
+        if (args.Length < 3) return null;
 
         var config = new BuildConfiguration();
         int argIndex;
 
-        if (args[0] == "--unity-version" && args.Length >= 4)
-        {
+        if (args[0] == "--unity-version" && args.Length >= 4) {
             config.UnityVersion = args[1];
             config.AssetDirectory = args[2];
             config.BundleName = args[3];
-            
+
             // Optional output directory
-            if (args.Length >= 5 && !args[4].StartsWith("--"))
-            {
+            if (args.Length >= 5 && !args[4].StartsWith("--")) {
                 config.OutputDirectory = args[4];
                 argIndex = 5;
             }
-            else
-            {
+            else {
                 config.OutputDirectory = Directory.GetCurrentDirectory();
                 argIndex = 4;
             }
         }
-        else if (args.Length >= 3)
-        {
+        else if (args.Length >= 3) {
             var firstArg = args[0];
             if (File.Exists(firstArg) && (firstArg.EndsWith("Unity.exe") || firstArg.EndsWith("Unity")))
-            {
                 config.UnityPath = firstArg;
-            }
             else
-            {
                 config.UnityVersion = firstArg;
-            }
 
             config.AssetDirectory = args[1];
             config.BundleName = args[2];
-            
+
             // Optional output directory
-            if (args.Length >= 4 && !args[3].StartsWith("--"))
-            {
+            if (args.Length >= 4 && !args[3].StartsWith("--")) {
                 config.OutputDirectory = args[3];
                 argIndex = 4;
             }
-            else
-            {
+            else {
                 config.OutputDirectory = Directory.GetCurrentDirectory();
                 argIndex = 3;
             }
         }
-        else
-        {
+        else {
             return null;
         }
 
         for (var i = argIndex; i < args.Length; i++)
-        {
-            switch (args[i])
-            {
+            switch (args[i]) {
                 case "--bundle-name" when i + 1 < args.Length:
                     config.BundleName = args[++i];
                     break;
                 case "--target" when i + 1 < args.Length:
-                    {
-                        config.BuildTarget = args[++i];
-                        if (config.BuildTarget != "windows" && config.BuildTarget != "mac" && 
-                            config.BuildTarget != "linux")
-                        {
-                            return null;
-                        }
-                        break;
-                    }
+                {
+                    config.BuildTarget = args[++i];
+                    if (config.BuildTarget != "windows" && config.BuildTarget != "mac" &&
+                        config.BuildTarget != "linux")
+                        return null;
+
+                    break;
+                }
                 case "--temp-project" when i + 1 < args.Length:
                     config.TempProjectPath = Path.GetFullPath(args[++i]);
                     break;
@@ -104,12 +85,8 @@ public static class ArgumentParser
                     config.LinkMethod = "junction";
                     break;
             }
-        }
 
-        if (string.IsNullOrEmpty(config.BundleName))
-        {
-            return null;
-        }
+        if (string.IsNullOrEmpty(config.BundleName)) return null;
 
         config.BundleName = config.BundleName.ToLower().Replace(" ", "");
         config.AssetDirectory = Path.GetFullPath(config.AssetDirectory);

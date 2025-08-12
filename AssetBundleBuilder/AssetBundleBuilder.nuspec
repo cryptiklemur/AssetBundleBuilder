@@ -1,28 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
+
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
-  <metadata>
-    <id>CryptikLemur.AssetBundleBuilder</id>
-    <version>$version$</version>
-    <authors>CryptikLemur</authors>
-    <description>Unity Asset Bundle Builder for RimWorld Mods. Build asset bundles from the command line without opening Unity Editor.</description>
-    <license type="file">LICENSE.md</license>
-    <projectUrl>https://github.com/CryptikLemur/AssetBundleBuilder</projectUrl>
-    <repository type="git" url="https://github.com/CryptikLemur/AssetBundleBuilder.git" />
-    <tags>unity assetbundle rimworld modding cli build-tools</tags>
-    <readme>README.md</readme>
-    <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <dependencies>
-      <group targetFramework="net9.0" />
-    </dependencies>
-    <contentFiles>
-      <files include="UnityScripts/**/*" buildAction="None" copyToOutput="true" />
-    </contentFiles>
-  </metadata>
-  <files>
-    <file src="bin\Release\net9.0\**\*" target="lib\net9.0" />
-    <file src="UnityScripts\**\*" target="contentFiles\any\any\UnityScripts" />
-    <file src="UnityScripts\**\*" target="content\UnityScripts" />
-    <file src="..\LICENSE.md" target="" />
-    <file src="..\README.md" target="" />
-  </files>
+    <metadata>
+        <id>CryptikLemur.AssetBundleBuilder</id>
+        <version>$version$</version>
+        <authors>CryptikLemur</authors>
+        <description>Unity Asset Bundle Builder for RimWorld Mods. Build asset bundles from the command line without opening Unity Editor.</description>
+        <license type="file">LICENSE.md</license>
+        <projectUrl>https://github.com/CryptikLemur/AssetBundleBuilder</projectUrl>
+        <repository type="git" url="https://github.com/CryptikLemur/AssetBundleBuilder.git"/>
+        <tags>unity assetbundle rimworld modding cli build-tools</tags>
+        <readme>README.md</readme>
+        <requireLicenseAcceptance>false</requireLicenseAcceptance>
+        <dependencies>
+            <group targetFramework="net9.0"/>
+        </dependencies>
+        <contentFiles>
+            <files include="UnityScripts/**/*" buildAction="None" copyToOutput="true"/>
+        </contentFiles>
+    </metadata>
+    <files>
+        <file src="bin\Release\net9.0\**\*" target="lib\net9.0"/>
+        <file src="UnityScripts\**\*" target="contentFiles\any\any\UnityScripts"/>
+        <file src="UnityScripts\**\*" target="content\UnityScripts"/>
+        <file src="..\LICENSE.md" target=""/>
+        <file src="..\README.md" target=""/>
+    </files>
 </package>
