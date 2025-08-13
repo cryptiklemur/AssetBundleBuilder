@@ -88,8 +88,17 @@ public static class ArgumentParser {
                 case "--ci":
                     config.CiMode = true;
                     break;
-                case "--silent":
-                    config.Silent = true;
+                case "-v":
+                case "--verbose":
+                    config.Verbosity = VerbosityLevel.Verbose;
+                    break;
+                case "-vv":
+                case "--debug":
+                    config.Verbosity = VerbosityLevel.Debug;
+                    break;
+                case "-q":
+                case "--quiet":
+                    config.Verbosity = VerbosityLevel.Quiet;
                     break;
                 case "--non-interactive":
                     config.NonInteractive = true;

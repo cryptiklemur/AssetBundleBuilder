@@ -15,6 +15,6 @@ public class BuildConfiguration {
     public bool AutoInstallHub { get; set; } = false;
     public bool AutoInstallEditor { get; set; } = false;
     public bool CiMode { get; set; } = false;
-    public bool Silent { get; set; } = false;
+    public VerbosityLevel Verbosity { get; set; } = VerbosityLevel.Normal;
     public bool NonInteractive { get; set; } = false;
 }

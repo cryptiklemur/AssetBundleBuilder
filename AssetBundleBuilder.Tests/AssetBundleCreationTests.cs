@@ -281,6 +281,10 @@ public class AssetBundleCreationTests : IDisposable {
                 Console.SetOut(testWriter);
                 Console.SetError(testWriter);
 
+                // Initialize global config and logging for the test
+                GlobalConfig.Config = config;
+                GlobalConfig.InitializeLogging(config.Verbosity);
+                
                 // Use the main AssetBundleBuilder logic
                 var exitCode = Program.BuildAssetBundle(config);
 
