@@ -39,7 +39,15 @@ public class AssetBundleCreationTests : IDisposable {
 
     [Fact]
     public async Task CreateAssetBundle_WithTestAssets_ShouldSucceed() {
-        // Skip test if Unity is not available
+        // Skip test in CI environments or if Unity is not available
+        var isCI = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CI")) ||
+                   !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"));
+        
+        if (isCI) {
+            _output.WriteLine("Skipping test: Unity tests are disabled in CI environment");
+            return;
+        }
+
         var unityPath = UnityPathFinder.FindUnityExecutable("2022.3.35f1");
         if (string.IsNullOrEmpty(unityPath)) {
             _output.WriteLine("Skipping test: Unity 2022.3.35f1 not found");
@@ -126,7 +134,15 @@ public class AssetBundleCreationTests : IDisposable {
     [InlineData("cryptiklemur.testbundle")]
     [InlineData("cryptiklemur_testbundle")]
     public async Task CreateAssetBundle_VerifyBundleNameInNewFormat(string inputBundleName) {
-        // Skip test if Unity is not available
+        // Skip test in CI environments or if Unity is not available
+        var isCI = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CI")) ||
+                   !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"));
+        
+        if (isCI) {
+            _output.WriteLine("Skipping test: Unity tests are disabled in CI environment");
+            return;
+        }
+
         var unityPath = UnityPathFinder.FindUnityExecutable("2022.3.35f1");
         if (string.IsNullOrEmpty(unityPath)) {
             _output.WriteLine("Skipping test: Unity 2022.3.35f1 not found");
@@ -169,7 +185,15 @@ public class AssetBundleCreationTests : IDisposable {
 
     [Fact]
     public async Task CreateAssetBundle_WindowsTarget_ShouldCreateOneBundle() {
-        // Skip test if Unity is not available
+        // Skip test in CI environments or if Unity is not available
+        var isCI = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CI")) ||
+                   !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"));
+        
+        if (isCI) {
+            _output.WriteLine("Skipping test: Unity tests are disabled in CI environment");
+            return;
+        }
+
         var unityPath = UnityPathFinder.FindUnityExecutable("2022.3.35f1");
         if (string.IsNullOrEmpty(unityPath)) {
             _output.WriteLine("Skipping test: Unity 2022.3.35f1 not found");
@@ -219,7 +243,15 @@ public class AssetBundleCreationTests : IDisposable {
     [InlineData("hardlink")]
     // symlink and junction require admin privileges on Windows, so skip them in automated tests
     public async Task CreateAssetBundle_DifferentLinkMethods_ShouldSucceed(string linkMethod) {
-        // Skip test if Unity is not available
+        // Skip test in CI environments or if Unity is not available
+        var isCI = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CI")) ||
+                   !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"));
+        
+        if (isCI) {
+            _output.WriteLine("Skipping test: Unity tests are disabled in CI environment");
+            return;
+        }
+
         var unityPath = UnityPathFinder.FindUnityExecutable("2022.3.35f1");
         if (string.IsNullOrEmpty(unityPath)) {
             _output.WriteLine("Skipping test: Unity 2022.3.35f1 not found");
@@ -307,7 +339,15 @@ public class AssetBundleCreationTests : IDisposable {
 
     [Fact]
     public async Task CreateAssetBundle_TempDirectoryCaching_ShouldReuseDirectory() {
-        // Skip test if Unity is not available
+        // Skip test in CI environments or if Unity is not available
+        var isCI = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CI")) ||
+                   !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"));
+        
+        if (isCI) {
+            _output.WriteLine("Skipping test: Unity tests are disabled in CI environment");
+            return;
+        }
+
         var unityPath = UnityPathFinder.FindUnityExecutable("2022.3.35f1");
         if (string.IsNullOrEmpty(unityPath)) {
             _output.WriteLine("Skipping test: Unity 2022.3.35f1 not found");

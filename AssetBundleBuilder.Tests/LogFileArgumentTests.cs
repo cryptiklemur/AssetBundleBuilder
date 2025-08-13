@@ -13,6 +13,7 @@ public class LogFileArgumentTests {
     [Fact]
     public void Parse_WithLogFileArgument_ShouldSetLogFile() {
         // Arrange
+        var logFilePath = "C:\\Logs\\unity.log";
         var args = new[]
         {
             "2022.3.35f1",
@@ -20,7 +21,7 @@ public class LogFileArgumentTests {
             "testbundle",
             "C:\\Output",
             "--logfile",
-            "C:\\Logs\\unity.log"
+            logFilePath
         };
 
         // Act
@@ -28,10 +29,11 @@ public class LogFileArgumentTests {
 
         // Assert
         Assert.NotNull(config);
-        Assert.Equal("C:\\Logs\\unity.log", config.LogFile);
+        // The path should be normalized to the current platform's format
+        Assert.Equal(Path.GetFullPath(logFilePath), config.LogFile);
         Assert.Equal("testbundle", config.BundleName);
-        Assert.Equal("C:\\Assets", config.AssetDirectory);
-        Assert.Equal("C:\\Output", config.OutputDirectory);
+        Assert.Equal(Path.GetFullPath("C:\\Assets"), config.AssetDirectory);
+        Assert.Equal(Path.GetFullPath("C:\\Output"), config.OutputDirectory);
     }
 
     [Fact]
@@ -80,6 +82,7 @@ public class LogFileArgumentTests {
     [Fact]
     public void Parse_WithLogFileAndOtherOptions_ShouldParseAll() {
         // Arrange  
+        var logFilePath = "C:\\Logs\\build.log";
         var args = new[]
         {
             "2022.3.35f1",
@@ -88,7 +91,7 @@ public class LogFileArgumentTests {
             "--target",
             "linux",
             "--logfile",
-            "C:\\Logs\\build.log",
+            logFilePath,
             "--keep-temp"
         };
 
@@ -97,7 +100,7 @@ public class LogFileArgumentTests {
 
         // Assert
         Assert.NotNull(config);
-        Assert.Equal("C:\\Logs\\build.log", config.LogFile);
+        Assert.Equal(Path.GetFullPath(logFilePath), config.LogFile);
         Assert.Equal("linux", config.BuildTarget);
         Assert.True(config.KeepTempProject);
         Assert.Equal("testbundle", config.BundleName);

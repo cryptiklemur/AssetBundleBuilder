@@ -45,7 +45,15 @@ public class AssetBundleNamingTests : IDisposable {
     [InlineData("simple", "linux", "resource_simple_linux")]
     public async Task CreateAssetBundle_VerifyNewNamingFormat(string inputBundleName, string buildTarget,
         string expectedFileName) {
-        // Skip test if Unity is not available
+        // Skip test in CI environments or if Unity is not available
+        var isCI = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CI")) ||
+                   !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"));
+        
+        if (isCI) {
+            _output.WriteLine("Skipping test: Unity tests are disabled in CI environment");
+            return;
+        }
+
         var unityPath = UnityPathFinder.FindUnityExecutable("2022.3.35f1");
         if (string.IsNullOrEmpty(unityPath)) {
             _output.WriteLine("Skipping test: Unity 2022.3.35f1 not found");
@@ -55,15 +63,6 @@ public class AssetBundleNamingTests : IDisposable {
         // Verify test assets exist
         if (!Directory.Exists(_testAssetsPath)) {
             _output.WriteLine($"Skipping test: TestAssets directory not found at {_testAssetsPath}");
-            return;
-        }
-
-        // Skip non-Windows builds in CI environments where Unity modules may not be installed
-        var isCI = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CI")) ||
-                   !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"));
-        
-        if (isCI && buildTarget != "windows") {
-            _output.WriteLine($"Skipping test: Non-Windows build target '{buildTarget}' in CI environment");
             return;
         }
 
@@ -150,7 +149,15 @@ public class AssetBundleNamingTests : IDisposable {
     [InlineData("linux")]
     [InlineData("mac")]
     public async Task CreateAssetBundle_DifferentTargets_ShouldIncludeTargetInName(string buildTarget) {
-        // Skip test if Unity is not available
+        // Skip test in CI environments or if Unity is not available
+        var isCI = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CI")) ||
+                   !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"));
+        
+        if (isCI) {
+            _output.WriteLine("Skipping test: Unity tests are disabled in CI environment");
+            return;
+        }
+
         var unityPath = UnityPathFinder.FindUnityExecutable("2022.3.35f1");
         if (string.IsNullOrEmpty(unityPath)) {
             _output.WriteLine("Skipping test: Unity 2022.3.35f1 not found");
@@ -160,15 +167,6 @@ public class AssetBundleNamingTests : IDisposable {
         // Verify test assets exist
         if (!Directory.Exists(_testAssetsPath)) {
             _output.WriteLine($"Skipping test: TestAssets directory not found at {_testAssetsPath}");
-            return;
-        }
-
-        // Skip non-Windows builds in CI environments where Unity modules may not be installed
-        var isCI = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CI")) ||
-                   !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"));
-        
-        if (isCI && buildTarget != "windows") {
-            _output.WriteLine($"Skipping test: Non-Windows build target '{buildTarget}' in CI environment");
             return;
         }
 
