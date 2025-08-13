@@ -148,15 +148,21 @@ public class ModAssetBundleBuilder
         if (File.Exists(unityManifestFile)) File.Delete(unityManifestFile);
         if (File.Exists(unityManifestMetaFile)) File.Delete(unityManifestMetaFile);
 
-        // Keep the original bundle name format (both author.name and author_name are valid)
+        // Generate the new naming format: resource_<bundlename>_<target>
+        // Convert periods to underscores in bundle name
+        var normalizedBundleName = assetBundleName.Replace(".", "_");
+        var finalFileName = $"resource_{normalizedBundleName}_{buildTarget}";
+        
+        Debug.Log($"Bundle naming: '{assetBundleName}' -> '{finalFileName}'");
+        
         var originalBundleFile = Path.Combine(tempOutputLocation, assetBundleName);
         var originalManifestFile = Path.Combine(tempOutputLocation, assetBundleName + ".manifest");
 
-        // Copy the built files to final output location
+        // Copy the built files to final output location with new naming
         if (!Directory.Exists(finalOutputLocation)) Directory.CreateDirectory(finalOutputLocation);
         
-        var finalBundleFile = Path.Combine(finalOutputLocation, assetBundleName);
-        var finalManifestFile = Path.Combine(finalOutputLocation, assetBundleName + ".manifest");
+        var finalBundleFile = Path.Combine(finalOutputLocation, finalFileName);
+        var finalManifestFile = Path.Combine(finalOutputLocation, finalFileName + ".manifest");
         
         Debug.Log($"Original bundle file: {originalBundleFile}");
         Debug.Log($"Copying bundle to final location: {finalBundleFile}");

@@ -85,9 +85,11 @@ public class AssetBundleCreationTests : IDisposable {
 
         Assert.True(success, "Asset bundle creation failed");
 
-        // Verify output files were created (bundle name is preserved as-is)
-        var expectedBundleFile = Path.Combine(_testOutputPath, config.BundleName);
-        var expectedManifestFile = Path.Combine(_testOutputPath, config.BundleName + ".manifest");
+        // Verify output files were created with new naming format
+        var normalizedBundleName = config.BundleName.Replace(".", "_");
+        var expectedFileName = $"resource_{normalizedBundleName}_{config.BuildTarget}";
+        var expectedBundleFile = Path.Combine(_testOutputPath, expectedFileName);
+        var expectedManifestFile = Path.Combine(_testOutputPath, expectedFileName + ".manifest");
 
         _output.WriteLine($"Looking for bundle file at: {expectedBundleFile}");
         _output.WriteLine($"Looking for manifest file at: {expectedManifestFile}");
@@ -107,9 +109,9 @@ public class AssetBundleCreationTests : IDisposable {
         // Verify no extra files were created (only the bundle and its manifest)
         Assert.Equal(2, outputFiles.Length);
 
-        // Verify the bundle name matches the input exactly
+        // Verify the bundle name follows the new format
         var actualBundleFileName = Path.GetFileName(expectedBundleFile);
-        Assert.Equal(config.BundleName, actualBundleFileName);
+        Assert.Equal(expectedFileName, actualBundleFileName);
 
         if (File.Exists(expectedManifestFile)) {
             var manifestContent = await File.ReadAllTextAsync(expectedManifestFile);
@@ -122,7 +124,7 @@ public class AssetBundleCreationTests : IDisposable {
     [InlineData("author_modname")]
     [InlineData("cryptiklemur.testbundle")]
     [InlineData("cryptiklemur_testbundle")]
-    public async Task CreateAssetBundle_VerifyBundleNamePreservation(string inputBundleName) {
+    public async Task CreateAssetBundle_VerifyBundleNameInNewFormat(string inputBundleName) {
         // Skip test if Unity is not available
         var unityPath = UnityPathFinder.FindUnityExecutable("2022.3.35f1");
         if (string.IsNullOrEmpty(unityPath)) {
@@ -148,14 +150,16 @@ public class AssetBundleCreationTests : IDisposable {
         var success = await BuildAssetBundleAsync(config);
         Assert.True(success, "Asset bundle creation failed");
 
-        // Verify the output file has the exact same name as input
-        var expectedBundleFile = Path.Combine(_testOutputPath, inputBundleName);
-        var expectedManifestFile = Path.Combine(_testOutputPath, inputBundleName + ".manifest");
+        // Verify the output file uses the new naming format
+        var normalizedBundleName = inputBundleName.Replace(".", "_");
+        var expectedFileName = $"resource_{normalizedBundleName}_{config.BuildTarget}";
+        var expectedBundleFile = Path.Combine(_testOutputPath, expectedFileName);
+        var expectedManifestFile = Path.Combine(_testOutputPath, expectedFileName + ".manifest");
 
         Assert.True(File.Exists(expectedBundleFile),
-            $"Asset bundle not found with expected name. Expected: {expectedBundleFile}");
+            $"Asset bundle not found with new naming format. Expected: {expectedBundleFile}");
         Assert.True(File.Exists(expectedManifestFile),
-            $"Manifest not found with expected name. Expected: {expectedManifestFile}");
+            $"Manifest not found with new naming format. Expected: {expectedManifestFile}");
 
         // Clean up output files for next iteration
         if (File.Exists(expectedBundleFile)) File.Delete(expectedBundleFile);
@@ -237,8 +241,10 @@ public class AssetBundleCreationTests : IDisposable {
         var success = await BuildAssetBundleAsync(config);
         Assert.True(success, $"Asset bundle creation failed with link method: {linkMethod}");
 
-        // Verify bundle was created
-        var expectedBundleFile = Path.Combine(_testOutputPath, config.BundleName);
+        // Verify bundle was created with new naming format
+        var normalizedBundleName = config.BundleName.Replace(".", "_");
+        var expectedFileName = $"resource_{normalizedBundleName}_{config.BuildTarget}";
+        var expectedBundleFile = Path.Combine(_testOutputPath, expectedFileName);
         Assert.True(File.Exists(expectedBundleFile));
 
         // Clean up
