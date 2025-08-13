@@ -18,28 +18,46 @@ public static class GlobalConfig
 
     private static ILogger CreateDefaultLogger()
     {
-        return new LoggerConfiguration()
-            .MinimumLevel.Information()
-            .WriteTo.Console(outputTemplate: "{Message:lj}{NewLine}")
-            .CreateLogger();
+        try
+        {
+            return new LoggerConfiguration()
+                .MinimumLevel.Information()
+                .WriteTo.Console(outputTemplate: "{Message:lj}{NewLine}")
+                .CreateLogger();
+        }
+        catch
+        {
+            // Fallback to a minimal logger if console setup fails
+            return new LoggerConfiguration()
+                .MinimumLevel.Information()
+                .CreateLogger();
+        }
     }
 
     public static void InitializeLogging(VerbosityLevel verbosity)
     {
-        var logLevel = verbosity switch
+        try
         {
-            VerbosityLevel.Quiet => LogEventLevel.Error,
-            VerbosityLevel.Normal => LogEventLevel.Warning,
-            VerbosityLevel.Verbose => LogEventLevel.Information,
-            VerbosityLevel.Debug => LogEventLevel.Debug,
-            _ => LogEventLevel.Information
-        };
+            var logLevel = verbosity switch
+            {
+                VerbosityLevel.Quiet => LogEventLevel.Error,
+                VerbosityLevel.Normal => LogEventLevel.Warning,
+                VerbosityLevel.Verbose => LogEventLevel.Information,
+                VerbosityLevel.Debug => LogEventLevel.Debug,
+                _ => LogEventLevel.Information
+            };
 
-        Logger = new LoggerConfiguration()
-            .MinimumLevel.Is(logLevel)
-            .WriteTo.Console(outputTemplate: "{Message:lj}{NewLine}")
-            .CreateLogger();
+            Logger = new LoggerConfiguration()
+                .MinimumLevel.Is(logLevel)
+                .WriteTo.Console(outputTemplate: "{Message:lj}{NewLine}")
+                .CreateLogger();
 
-        Log.Logger = Logger;
+            Log.Logger = Logger;
+        }
+        catch
+        {
+            // If logging initialization fails, keep the existing logger
+            // This ensures we never break the application due to logging issues
+        }
     }
 }

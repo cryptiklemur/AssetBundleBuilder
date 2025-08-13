@@ -188,6 +188,9 @@ public class AssetBundleNamingTests : IDisposable {
         return Task.Run(() =>
         {
             try {
+                // Initialize global config first
+                GlobalConfig.Config = config;
+                
                 // Redirect console output to test output
                 var originalOut = Console.Out;
                 var originalError = Console.Error;
@@ -195,8 +198,7 @@ public class AssetBundleNamingTests : IDisposable {
                 Console.SetOut(testWriter);
                 Console.SetError(testWriter);
 
-                // Initialize global config and logging for the test
-                GlobalConfig.Config = config;
+                // Initialize logging after console redirection so Serilog uses the redirected console
                 GlobalConfig.InitializeLogging(config.Verbosity);
                 
                 // Use the main AssetBundleBuilder logic
