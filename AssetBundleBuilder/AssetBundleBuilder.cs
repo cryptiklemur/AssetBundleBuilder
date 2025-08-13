@@ -93,13 +93,21 @@ public static class Program {
             CreateUnityProject(config.TempProjectPath, config.AssetDirectory, config.BundleName, config.LinkMethod);
 
             // Build Unity command line arguments
-            var unityArgs = new[]
+            var unityArgsList = new List<string>
             {
                 "-batchmode",
                 "-nographics",
-                "-quit",
-                "-logfile",
-                "-",
+                "-quit"
+            };
+
+            // Use custom logfile if provided
+            if (!string.IsNullOrEmpty(config.LogFile)) {
+                unityArgsList.Add("-logfile");
+                unityArgsList.Add(config.LogFile);
+                Console.WriteLine($"Unity log will be written to: {config.LogFile}");
+            }
+
+            unityArgsList.AddRange([
                 "-projectPath",
                 config.TempProjectPath,
                 "-executeMethod",
@@ -112,7 +120,9 @@ public static class Program {
                 config.OutputDirectory,
                 "-assetDirectory",
                 config.AssetDirectory
-            };
+            ]);
+
+            var unityArgs = unityArgsList.ToArray();
 
             var processInfo = new ProcessStartInfo
             {
@@ -202,6 +212,7 @@ public static class Program {
         Console.WriteLine("  --symlink              Create symbolic link to assets (faster builds)");
         Console.WriteLine("  --hardlink             Create hard links to assets (Windows/Unix)");
         Console.WriteLine("  --junction             Create directory junction to assets (Windows only)");
+        Console.WriteLine("  --logfile <path>       Write Unity log to specified file (default: stdout)");
         Console.WriteLine();
         Console.WriteLine("Examples:");
         Console.WriteLine("  AssetBundleBuilder 2022.3.5f1 \"C:\\MyMod\\Assets\" \"C:\\MyMod\\Output\" \"mymod\"");

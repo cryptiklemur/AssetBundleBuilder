@@ -24,7 +24,7 @@ public class AssetBundleCreationTests : IDisposable {
 
     public void Dispose() {
         foreach (var dir in _tempDirectoriesToCleanup)
-            if (Directory.Exists(dir))
+            if (Directory.Exists(dir)) {
                 try {
                     var files = Directory.GetFiles(dir, "*", SearchOption.AllDirectories);
                     foreach (var file in files) File.SetAttributes(file, FileAttributes.Normal);
@@ -34,6 +34,7 @@ public class AssetBundleCreationTests : IDisposable {
                 catch (Exception ex) {
                     _output.WriteLine($"Warning: Could not clean up {dir}: {ex.Message}");
                 }
+            }
     }
 
     [Fact]

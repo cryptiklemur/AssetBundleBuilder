@@ -11,4 +11,5 @@ public class BuildConfiguration {
     public bool KeepTempProject { get; set; } = false;
     public bool CleanTempProject { get; set; } = false;
     public string LinkMethod { get; set; } = "copy"; // copy, symlink, hardlink, junction
+    public string LogFile { get; set; } = string.Empty;
 }

@@ -42,9 +42,7 @@ public static class ArgumentParser {
                 argIndex = 3;
             }
         }
-        else {
-            return null;
-        }
+        else return null;
 
         for (var i = argIndex; i < args.Length; i++)
             switch (args[i]) {
@@ -83,6 +81,9 @@ public static class ArgumentParser {
                     break;
                 case "--junction":
                     config.LinkMethod = "junction";
+                    break;
+                case "--logfile" when i + 1 < args.Length:
+                    config.LogFile = Path.GetFullPath(args[++i]);
                     break;
             }
 

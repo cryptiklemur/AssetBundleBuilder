@@ -7,7 +7,7 @@ public class TempDirectoryTests : IDisposable {
 
     public void Dispose() {
         foreach (var dir in _tempDirectoriesToCleanup)
-            if (Directory.Exists(dir))
+            if (Directory.Exists(dir)) {
                 try {
                     var files = Directory.GetFiles(dir, "*", SearchOption.AllDirectories);
                     foreach (var file in files) File.SetAttributes(file, FileAttributes.Normal);
@@ -16,6 +16,7 @@ public class TempDirectoryTests : IDisposable {
                 catch {
                     // Ignore cleanup failures in tests
                 }
+            }
     }
 
     [Fact]
@@ -234,7 +235,7 @@ public class TempDirectoryTests : IDisposable {
     }
 
     private static bool CleanExistingTempProject(BuildConfiguration config) {
-        if (config.CleanTempProject && Directory.Exists(config.TempProjectPath))
+        if (config.CleanTempProject && Directory.Exists(config.TempProjectPath)) {
             try {
                 var files = Directory.GetFiles(config.TempProjectPath, "*", SearchOption.AllDirectories);
                 foreach (var file in files) File.SetAttributes(file, FileAttributes.Normal);
@@ -244,6 +245,7 @@ public class TempDirectoryTests : IDisposable {
             catch {
                 return false;
             }
+        }
 
         return true;
     }

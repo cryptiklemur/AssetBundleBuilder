@@ -13,6 +13,7 @@ indent_size = 4
 file_header_template = # Microsoft .NET properties
 
 
+
 csharp_indent_braces = false
 csharp_new_line_before_open_brace = accessors, anonymous_methods, anonymous_types, control_blocks, events, indexers, lambdas, object_collection_array_initializers, properties
 

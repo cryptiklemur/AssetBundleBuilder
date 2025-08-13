@@ -24,7 +24,7 @@ public class AssetBundleNamingTests : IDisposable {
 
     public void Dispose() {
         foreach (var dir in _tempDirectoriesToCleanup)
-            if (Directory.Exists(dir))
+            if (Directory.Exists(dir)) {
                 try {
                     var files = Directory.GetFiles(dir, "*", SearchOption.AllDirectories);
                     foreach (var file in files) File.SetAttributes(file, FileAttributes.Normal);
@@ -34,6 +34,7 @@ public class AssetBundleNamingTests : IDisposable {
                 catch (Exception ex) {
                     _output.WriteLine($"Warning: Could not clean up {dir}: {ex.Message}");
                 }
+            }
     }
 
     [Theory]
@@ -42,7 +43,8 @@ public class AssetBundleNamingTests : IDisposable {
     [InlineData("test.bundle", "mac", "resource_test_bundle_mac")]
     [InlineData("cryptiklemur.assetbuilder", "windows", "resource_cryptiklemur_assetbuilder_windows")]
     [InlineData("simple", "linux", "resource_simple_linux")]
-    public async Task CreateAssetBundle_VerifyNewNamingFormat(string inputBundleName, string buildTarget, string expectedFileName) {
+    public async Task CreateAssetBundle_VerifyNewNamingFormat(string inputBundleName, string buildTarget,
+        string expectedFileName) {
         // Skip test if Unity is not available
         var unityPath = UnityPathFinder.FindUnityExecutable("2022.3.35f1");
         if (string.IsNullOrEmpty(unityPath)) {
@@ -97,7 +99,7 @@ public class AssetBundleNamingTests : IDisposable {
         // Verify no old-format files exist
         var oldFormatBundleFile = Path.Combine(_testOutputPath, inputBundleName);
         var oldFormatManifestFile = Path.Combine(_testOutputPath, inputBundleName + ".manifest");
-        
+
         Assert.False(File.Exists(oldFormatBundleFile),
             $"Old format bundle file should not exist: {oldFormatBundleFile}");
         Assert.False(File.Exists(oldFormatManifestFile),
@@ -116,7 +118,11 @@ public class AssetBundleNamingTests : IDisposable {
             new { BundleName = "author.modname", Target = "windows", Expected = "resource_author_modname_windows" },
             new { BundleName = "mymod", Target = "linux", Expected = "resource_mymod_linux" },
             new { BundleName = "test.bundle", Target = "mac", Expected = "resource_test_bundle_mac" },
-            new { BundleName = "complex.name.with.dots", Target = "windows", Expected = "resource_complex_name_with_dots_windows" },
+            new
+            {
+                BundleName = "complex.name.with.dots", Target = "windows",
+                Expected = "resource_complex_name_with_dots_windows"
+            },
             new { BundleName = "simple", Target = "linux", Expected = "resource_simple_linux" }
         };
 
@@ -124,7 +130,7 @@ public class AssetBundleNamingTests : IDisposable {
             // Simulate the naming logic from ModAssetBundleBuilder.cs
             var normalizedBundleName = testCase.BundleName.Replace(".", "_");
             var actualResult = $"resource_{normalizedBundleName}_{testCase.Target}";
-            
+
             _output.WriteLine($"Input: '{testCase.BundleName}' + '{testCase.Target}' -> '{actualResult}'");
             Assert.Equal(testCase.Expected, actualResult);
         }
