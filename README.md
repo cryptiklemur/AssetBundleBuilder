@@ -1,15 +1,23 @@
 # AssetBundleBuilder
 
-Command line tool for building Unity asset bundles for RimWorld mods. No repository cloning or Unity project setup required.
+Command line tool for building Unity asset bundles for RimWorld mods. No repository cloning or Unity project setup
+required.
 
 ## Prerequisites
 
-Unity Editor Required: This tool requires Unity Hub and a Unity Editor installation (e.g., 2022.3.35f1) to build asset bundles. The tool will:
-- Auto detect Unity installations in standard locations
+**Automatic Unity Installation**: On Windows and macOS, if Unity is not found, the tool will automatically prompt to
+download and install Unity Hub and the required Unity Editor version. On Linux, manual Unity Hub installation is
+required.
+
+The tool will:
+
+- Auto-detect Unity installations in standard locations
+- Automatically install Unity Hub and Unity Editor if missing (Windows/macOS)
 - Create temporary Unity projects automatically
 - Handle all Unity project configuration
 
-Download Unity Hub from [unity.com/download](https://unity.com/download) and install the required Unity version through it.
+For manual installation, download Unity Hub from [unity.com/download](https://unity.com/download) and install the
+required Unity version through it.
 
 ## Installation
 
@@ -25,7 +33,8 @@ assetbundlebuilder 2022.3.35f1 "/path/to/assets" "mybundle" "/path/to/output"
 
 ### Manual Installation
 
-Download the appropriate executable for your platform from the [Releases Page](https://github.com/CryptikLemur/AssetBundleBuilder/releases):
+Download the appropriate executable for your platform from
+the [Releases Page](https://github.com/CryptikLemur/AssetBundleBuilder/releases):
 
 Extract and run the executable directly. No installation required.
 
@@ -62,14 +71,15 @@ assetbundlebuilder 2022.3.35f1 "/path/to/assets" "mybundle" "/path/to/output" --
 
 ## Supported Features
 
-- Unity Version Auto Discovery: Just specify the version (e.g., `2022.3.35f1`)
-- Cross Platform: Windows, macOS, and Linux native executables
-- Multiple Build Targets: Windows, macOS, Linux asset bundles
-- Automatic Asset Import Settings: Textures, audio, shaders
-- Terrain Texture Support: Special handling for terrain assets
-- PSD File Support: Basic Photoshop document import
-- Temporary Project Management: No manual Unity project required
-- CI/CD Friendly: Works in automated build pipelines
+- **Automatic Unity Installation**: Downloads and installs Unity Hub and Unity Editor if missing (Windows/macOS)
+- **Unity Version Auto Discovery**: Just specify the version (e.g., `2022.3.35f1`)
+- **Cross Platform**: Windows, macOS, and Linux native executables
+- **Multiple Build Targets**: Windows, macOS, Linux asset bundles
+- **Automatic Asset Import Settings**: Textures, audio, shaders
+- **Terrain Texture Support**: Special handling for terrain assets
+- **PSD File Support**: Basic Photoshop document import
+- **Temporary Project Management**: No manual Unity project required
+- **CI/CD Friendly**: Works in automated build pipelines
 
 ## Command Reference
 
@@ -129,15 +139,18 @@ assetbundlebuilder 2022.3.35f1 "/home/user/MyMod/Assets" "mymod" "/home/user/MyM
 The tool automatically searches these common Unity installation locations:
 
 ### Windows
+
 - `C:\Program Files\Unity\Hub\Editor\`
 - `C:\Program Files (x86)\Unity\Hub\Editor\`
 - `%USERPROFILE%\Unity\Hub\Editor\`
 
 ### macOS
+
 - `/Applications/Unity/Hub/Editor/`
 - `$HOME/Applications/Unity/Hub/Editor/`
 
 ### Linux
+
 - `/opt/unity/editor/`
 - `$HOME/Unity/Hub/Editor/`
 - `$HOME/.local/share/Unity/Hub/Editor/`
@@ -172,6 +185,7 @@ The tool automatically searches these common Unity installation locations:
 ## Troubleshooting
 
 ### Unity Not Found
+
 ```bash
 # Try with full path instead
 assetbundlebuilder "/path/to/Unity" "/path/to/assets" "/path/to/output"
@@ -180,6 +194,7 @@ assetbundlebuilder "/path/to/Unity" "/path/to/assets" "/path/to/output"
 ```
 
 ### Permission Errors (Linux/macOS)
+
 ```bash
 # Make sure executable has proper permissions
 chmod +x ./AssetBundleBuilder
@@ -189,12 +204,14 @@ dotnet tool install --global AssetBundleBuilder.GlobalTool
 ```
 
 ### Invalid Bundle Name
+
 ```bash
 # Use a valid bundle name (alphanumeric, dots, underscores)
 assetbundlebuilder 2022.3.35f1 "/path/to/assets" "valid_bundle_name" "/path/to/output"
 ```
 
 ### Debugging
+
 ```bash
 # Keep temporary project for inspection
 assetbundlebuilder 2022.3.35f1 "/path/to/assets" "mybundle" "/path/to/output" --keep-temp
@@ -203,6 +220,7 @@ assetbundlebuilder 2022.3.35f1 "/path/to/assets" "mybundle" "/path/to/output" --
 ## Uninstallation
 
 ### .NET Global Tool
+
 ```bash
 dotnet tool uninstall --global CryptikLemur.AssetBundleBuilder
 ```

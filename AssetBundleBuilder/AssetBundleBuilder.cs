@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 
 namespace CryptikLemur.AssetBundleBuilder;
 
@@ -23,13 +24,26 @@ public static class Program {
         if (!string.IsNullOrEmpty(config.UnityVersion) && string.IsNullOrEmpty(config.UnityPath)) {
             config.UnityPath = UnityPathFinder.FindUnityExecutable(config.UnityVersion) ?? "";
             if (string.IsNullOrEmpty(config.UnityPath)) {
-                Console.WriteLine($"Error: Could not find Unity {config.UnityVersion} installation.");
-                Console.WriteLine(
-                    "Searched common installation paths. Please specify the full path to Unity.exe instead.");
-                return 1;
+                if (config.CiMode) {
+                    Console.WriteLine($"Error: Could not find Unity {config.UnityVersion} installation.");
+                    Console.WriteLine("In CI mode, Unity must be pre-installed. Auto-installation is disabled.");
+                    return 1;
+                }
+
+                var installResult = PromptAndInstallUnity(config.UnityVersion, config.Silent, config.NonInteractive);
+                if (installResult == 0) {
+                    // Retry finding Unity after installation
+                    config.UnityPath = UnityPathFinder.FindUnityExecutable(config.UnityVersion) ?? "";
+                }
+
+                if (string.IsNullOrEmpty(config.UnityPath)) {
+                    Console.WriteLine(
+                        $"Error: Could not find Unity {config.UnityVersion} installation even after attempted installation.");
+                    return 1;
+                }
             }
 
-            Console.WriteLine($"Found Unity {config.UnityVersion} at: {config.UnityPath}");
+            if (!config.Silent) Console.WriteLine($"Found Unity {config.UnityVersion} at: {config.UnityPath}");
         }
 
         // Validate paths
@@ -48,11 +62,11 @@ public static class Program {
             return 1;
         }
 
-        Console.WriteLine($"Using bundle name: {config.BundleName}");
+        if (!config.Silent) Console.WriteLine($"Using bundle name: {config.BundleName}");
 
         // Convert user-friendly build target to Unity command line format
         var unityBuildTarget = ConvertBuildTarget(config.BuildTarget);
-        Console.WriteLine($"Unity build target: {unityBuildTarget}");
+        if (!config.Silent) Console.WriteLine($"Unity build target: {unityBuildTarget}");
 
         // Create temporary Unity project if not specified
         if (string.IsNullOrEmpty(config.TempProjectPath)) {
@@ -66,31 +80,45 @@ public static class Program {
         if (config.CleanTempProject && Directory.Exists(config.TempProjectPath)) {
             try {
                 Directory.Delete(config.TempProjectPath, true);
-                Console.WriteLine($"Cleaned up existing temp project: {config.TempProjectPath}");
+                if (!config.Silent) Console.WriteLine($"Cleaned up existing temp project: {config.TempProjectPath}");
             }
             catch (Exception ex) {
                 Console.WriteLine($"Warning: Could not clean up existing temp project: {ex.Message}");
             }
         }
 
-        Console.WriteLine("Starting Unity Asset Bundle Builder");
-        Console.WriteLine($"Unity Path: {config.UnityPath}");
-        Console.WriteLine($"Temp Project Path: {config.TempProjectPath}");
-        Console.WriteLine($"Asset Directory: {config.AssetDirectory}");
-        Console.WriteLine($"Bundle Name: {config.BundleName}");
-        Console.WriteLine($"Output Directory: {config.OutputDirectory}");
-        Console.WriteLine($"Build Target: {config.BuildTarget}");
-        Console.WriteLine();
+        if (!config.Silent) {
+            Console.WriteLine("Starting Unity Asset Bundle Builder");
+            Console.WriteLine($"Unity Path: {config.UnityPath}");
+            Console.WriteLine($"Temp Project Path: {config.TempProjectPath}");
+            Console.WriteLine($"Asset Directory: {config.AssetDirectory}");
+            Console.WriteLine($"Bundle Name: {config.BundleName}");
+            Console.WriteLine($"Output Directory: {config.OutputDirectory}");
+            Console.WriteLine($"Build Target: {config.BuildTarget}");
+            Console.WriteLine();
+        }
+
+        // Manage Unity Hub if not in CI mode
+        var wasHubRunning = false;
+        if (!config.CiMode) {
+            wasHubRunning = IsUnityHubRunning();
+            if (!wasHubRunning) {
+                if (!config.Silent) Console.WriteLine("Starting Unity Hub...");
+                if (!StartUnityHub() && !config.Silent)
+                    Console.WriteLine("Warning: Could not start Unity Hub. Continuing without it.");
+            }
+        }
 
         try {
             // Ensure output directory exists
             if (!Directory.Exists(config.OutputDirectory)) {
                 Directory.CreateDirectory(config.OutputDirectory);
-                Console.WriteLine($"Created output directory: {config.OutputDirectory}");
+                if (!config.Silent) Console.WriteLine($"Created output directory: {config.OutputDirectory}");
             }
 
             // Create temporary Unity project
-            CreateUnityProject(config.TempProjectPath, config.AssetDirectory, config.BundleName, config.LinkMethod);
+            CreateUnityProject(config.TempProjectPath, config.AssetDirectory, config.BundleName, config.LinkMethod,
+                config.Silent);
 
             // Build Unity command line arguments
             var unityArgsList = new List<string>
@@ -104,7 +132,7 @@ public static class Program {
             if (!string.IsNullOrEmpty(config.LogFile)) {
                 unityArgsList.Add("-logfile");
                 unityArgsList.Add(config.LogFile);
-                Console.WriteLine($"Unity log will be written to: {config.LogFile}");
+                if (!config.Silent) Console.WriteLine($"Unity log will be written to: {config.LogFile}");
             }
 
             unityArgsList.AddRange([
@@ -134,24 +162,40 @@ public static class Program {
                 CreateNoWindow = true
             };
 
-            Console.WriteLine("Launching Unity...");
+            if (!config.Silent) Console.WriteLine("Launching Unity...");
             using (var process = Process.Start(processInfo)) {
                 if (process == null) throw new Exception("Launching Unity failed.");
 
-                // Read output asynchronously
-                process.OutputDataReceived += (_, e) =>
-                {
-                    if (!string.IsNullOrEmpty(e.Data))
-                        Console.WriteLine(e.Data);
-                };
-                process.ErrorDataReceived += (_, e) =>
-                {
-                    if (!string.IsNullOrEmpty(e.Data))
-                        Console.Error.WriteLine(e.Data);
-                };
+                // Read output asynchronously (only if not silent, and filter experimental lines)
+                if (!config.Silent) {
+                    process.OutputDataReceived += (_, e) =>
+                    {
+                        if (!string.IsNullOrEmpty(e.Data) && !e.Data.TrimStart().StartsWith("[Experiment"))
+                            Console.WriteLine(e.Data);
+                    };
+                    process.ErrorDataReceived += (_, e) =>
+                    {
+                        if (!string.IsNullOrEmpty(e.Data) && !e.Data.TrimStart().StartsWith("[Experiment"))
+                            Console.Error.WriteLine(e.Data);
+                    };
 
-                process.BeginOutputReadLine();
-                process.BeginErrorReadLine();
+                    process.BeginOutputReadLine();
+                    process.BeginErrorReadLine();
+                }
+                else {
+                    // Even in silent mode, we need to consume the output to prevent the process from blocking
+                    process.OutputDataReceived += (_, e) =>
+                    {
+                        /* consume and discard */
+                    };
+                    process.ErrorDataReceived += (_, e) =>
+                    {
+                        /* consume and discard */
+                    };
+
+                    process.BeginOutputReadLine();
+                    process.BeginErrorReadLine();
+                }
 
                 process.WaitForExit();
 
@@ -161,7 +205,7 @@ public static class Program {
                 }
             }
 
-            Console.WriteLine("Asset bundles built successfully!");
+            if (!config.Silent) Console.WriteLine("Asset bundles built successfully!");
             return 0;
         }
         catch (Exception ex) {
@@ -169,17 +213,24 @@ public static class Program {
             return 1;
         }
         finally {
+            // Clean up Unity Hub if we started it and not in CI mode
+            if (!config.CiMode && !wasHubRunning && IsUnityHubRunning()) {
+                if (!config.Silent) Console.WriteLine("Stopping Unity Hub...");
+                StopUnityHub();
+            }
+
             // Clean up temporary project unless requested to keep it
             if (!config.KeepTempProject && Directory.Exists(config.TempProjectPath)) {
                 try {
                     Directory.Delete(config.TempProjectPath, true);
-                    Console.WriteLine($"Cleaned up temporary project: {config.TempProjectPath}");
+                    if (!config.Silent) Console.WriteLine($"Cleaned up temporary project: {config.TempProjectPath}");
                 }
                 catch (Exception ex) {
                     Console.WriteLine($"Warning: Could not clean up temporary project: {ex.Message}");
                 }
             }
-            else if (config.KeepTempProject) Console.WriteLine($"Temporary project kept at: {config.TempProjectPath}");
+            else if (config.KeepTempProject && !config.Silent)
+                Console.WriteLine($"Temporary project kept at: {config.TempProjectPath}");
         }
     }
 
@@ -213,6 +264,9 @@ public static class Program {
         Console.WriteLine("  --hardlink             Create hard links to assets (Windows/Unix)");
         Console.WriteLine("  --junction             Create directory junction to assets (Windows only)");
         Console.WriteLine("  --logfile <path>       Write Unity log to specified file (default: stdout)");
+        Console.WriteLine("  --ci                   Run in CI mode (no interactive prompts, no Unity auto-install)");
+        Console.WriteLine("  --silent               Suppress Unity executable output");
+        Console.WriteLine("  --non-interactive      Auto-answer yes to prompts, exit on errors");
         Console.WriteLine();
         Console.WriteLine("Examples:");
         Console.WriteLine("  AssetBundleBuilder 2022.3.5f1 \"C:\\MyMod\\Assets\" \"C:\\MyMod\\Output\" \"mymod\"");
@@ -223,8 +277,8 @@ public static class Program {
     }
 
     private static void CreateUnityProject(string projectPath, string assetDirectory, string bundleName,
-        string linkMethod) {
-        Console.WriteLine($"Creating temporary Unity project at: {projectPath}");
+        string linkMethod, bool silent = false) {
+        if (!silent) Console.WriteLine($"Creating temporary Unity project at: {projectPath}");
 
         // Create project structure
         Directory.CreateDirectory(projectPath);
@@ -244,9 +298,9 @@ public static class Program {
 
         // Link assets from source directory to Unity project
         var targetPath = Path.Combine(projectPath, "Assets", "Data", bundleName);
-        LinkAssets(assetDirectory, targetPath, linkMethod);
+        LinkAssets(assetDirectory, targetPath, linkMethod, silent);
 
-        Console.WriteLine("Unity project created successfully.");
+        if (!silent) Console.WriteLine("Unity project created successfully.");
     }
 
     // Include the embedded C# scripts here...
@@ -272,10 +326,12 @@ public static class Program {
 
     // Unity scripts are now copied from UnityScripts/ directory instead of being embedded
 
-    private static void LinkAssets(string sourceDirectory, string targetPath, string linkMethod) {
-        Console.WriteLine($"Linking assets using method: {linkMethod}");
-        Console.WriteLine($"Source: {sourceDirectory}");
-        Console.WriteLine($"Target: {targetPath}");
+    private static void LinkAssets(string sourceDirectory, string targetPath, string linkMethod, bool silent = false) {
+        if (!silent) {
+            Console.WriteLine($"Linking assets using method: {linkMethod}");
+            Console.WriteLine($"Source: {sourceDirectory}");
+            Console.WriteLine($"Target: {targetPath}");
+        }
 
         // Ensure target directory doesn't exist
         if (Directory.Exists(targetPath)) Directory.Delete(targetPath, true);
@@ -287,19 +343,19 @@ public static class Program {
         switch (linkMethod.ToLower()) {
             case "copy":
                 CopyDirectory(sourceDirectory, targetPath);
-                Console.WriteLine("Assets copied successfully.");
+                if (!silent) Console.WriteLine("Assets copied successfully.");
                 break;
             case "symlink":
                 CreateSymbolicLink(sourceDirectory, targetPath);
-                Console.WriteLine("Symbolic link created successfully.");
+                if (!silent) Console.WriteLine("Symbolic link created successfully.");
                 break;
             case "hardlink":
                 CreateHardLink(sourceDirectory, targetPath);
-                Console.WriteLine("Hard links created successfully.");
+                if (!silent) Console.WriteLine("Hard links created successfully.");
                 break;
             case "junction":
                 CreateJunction(sourceDirectory, targetPath);
-                Console.WriteLine("Junction created successfully.");
+                if (!silent) Console.WriteLine("Junction created successfully.");
                 break;
             default:
                 throw new ArgumentException($"Unknown link method: {linkMethod}");
@@ -414,5 +470,420 @@ public static class Program {
             "linux" => "StandaloneLinux64",
             _ => throw new ArgumentException($"Unsupported build target: {userBuildTarget}")
         };
+    }
+
+    private static int PromptAndInstallUnity(string version, bool silent = false, bool nonInteractive = false) {
+        if (!silent) Console.WriteLine($"Unity {version} was not found on this system.");
+
+        if (nonInteractive) {
+            if (!silent)
+                Console.WriteLine("Non-interactive mode: Automatically installing Unity Hub and Unity Editor...");
+        }
+        else {
+            Console.WriteLine("Would you like to automatically download and install Unity Hub and Unity Editor? (Y/n)");
+            var response = Console.ReadLine()?.Trim().ToLower();
+            if (response is "n" or "no") {
+                Console.WriteLine("Installation cancelled by user.");
+                return 1;
+            }
+        }
+
+        try {
+            // Step 1: Install Unity Hub if not present
+            if (!IsUnityHubInstalled()) {
+                if (!silent) Console.WriteLine("Installing Unity Hub...");
+                var hubResult = InstallUnityHub(silent, nonInteractive);
+                if (hubResult != 0) {
+                    if (!silent) Console.WriteLine("Failed to install Unity Hub.");
+                    if (nonInteractive) {
+                        if (!silent)
+                            Console.WriteLine("Non-interactive mode: Exiting due to Unity Hub installation failure.");
+                        return hubResult;
+                    }
+
+                    return hubResult;
+                }
+
+                if (!silent) Console.WriteLine("Unity Hub installed successfully.");
+            }
+            else if (!silent) Console.WriteLine("Unity Hub is already installed.");
+
+            // Step 2: Install Unity Editor version via Hub
+            if (!silent) Console.WriteLine($"Installing Unity Editor {version}...");
+            var editorResult = InstallUnityEditor(version, silent, nonInteractive);
+            if (editorResult != 0) {
+                if (!silent) Console.WriteLine($"Failed to install Unity Editor {version}.");
+                if (nonInteractive) {
+                    if (!silent)
+                        Console.WriteLine("Non-interactive mode: Exiting due to Unity Editor installation failure.");
+                    return editorResult;
+                }
+
+                return editorResult;
+            }
+
+            if (!silent) Console.WriteLine($"Unity Editor {version} installed successfully.");
+            return 0;
+        }
+        catch (Exception ex) {
+            Console.WriteLine($"Error during Unity installation: {ex.Message}");
+            return 1;
+        }
+    }
+
+    private static bool IsUnityHubInstalled() {
+        return GetUnityHubExecutablePath() != null;
+    }
+
+    private static string? GetUnityHubExecutablePath() {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            var hubPaths = new[]
+            {
+                @"C:\Program Files\Unity Hub\Unity Hub.exe",
+                @"C:\Program Files (x86)\Unity Hub\Unity Hub.exe"
+            };
+            return hubPaths.FirstOrDefault(File.Exists);
+        }
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
+            var hubPath = "/Applications/Unity Hub.app/Contents/MacOS/Unity Hub";
+            return File.Exists(hubPath) ? hubPath : null;
+        }
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) {
+            // Check common Linux installation paths
+            var hubPaths = new[]
+            {
+                "/opt/unityhub/unityhub",
+                "/usr/bin/unityhub"
+            };
+            return hubPaths.FirstOrDefault(File.Exists);
+        }
+
+        return null;
+    }
+
+    private static bool IsUnityHubRunning() {
+        try {
+            var processes = Process.GetProcessesByName("Unity Hub");
+            return processes.Length > 0;
+        }
+        catch {
+            return false;
+        }
+    }
+
+    private static bool StartUnityHub() {
+        try {
+            var hubPath = GetUnityHubExecutablePath();
+            if (string.IsNullOrEmpty(hubPath)) return false;
+
+            var processInfo = new ProcessStartInfo
+            {
+                FileName = hubPath,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WindowStyle = ProcessWindowStyle.Hidden,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+
+            var process = Process.Start(processInfo);
+            if (process == null) return false;
+
+            // Consume Unity Hub output to prevent it from appearing in console
+            process.OutputDataReceived += (_, e) =>
+            {
+                /* consume and discard */
+            };
+            process.ErrorDataReceived += (_, e) =>
+            {
+                /* consume and discard */
+            };
+
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+
+            // Give Unity Hub a moment to start up
+            Thread.Sleep(2000);
+            return IsUnityHubRunning();
+        }
+        catch {
+            return false;
+        }
+    }
+
+    private static void StopUnityHub() {
+        try {
+            var processes = Process.GetProcessesByName("Unity Hub");
+            foreach (var process in processes)
+                try {
+                    process.Kill();
+                    process.WaitForExit(5000); // Wait up to 5 seconds
+                }
+                catch {
+                    // Ignore errors when killing processes
+                }
+        }
+        catch {
+            // Ignore errors
+        }
+    }
+
+    private static string? GetUnityChangeset(string version) {
+        try {
+            var url = $"https://services.api.unity.com/unity/editor/release/v1/releases?version={version}";
+
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Add("User-Agent", "AssetBundleBuilder");
+
+            var response = client.GetAsync(url).Result;
+
+            if (!response.IsSuccessStatusCode) return null;
+
+            var responseContent = response.Content.ReadAsStringAsync().Result;
+
+            // Parse JSON to extract changeset from shortRevision
+            using var doc = JsonDocument.Parse(responseContent);
+            if (doc.RootElement.TryGetProperty("results", out var results) && results.GetArrayLength() > 0) {
+                var firstResult = results[0];
+                if (firstResult.TryGetProperty("shortRevision", out var shortRevision)) {
+                    var changesetValue = shortRevision.GetString();
+                    if (!string.IsNullOrEmpty(changesetValue)) {
+                        Console.WriteLine($"Found changeset: {changesetValue}");
+                        return changesetValue;
+                    }
+                }
+            }
+
+            Console.WriteLine("No changeset found in API response");
+            return null;
+        }
+        catch (Exception ex) {
+            Console.WriteLine($"Warning: Error querying Unity changeset via REST API: {ex.Message}");
+            return null;
+        }
+    }
+
+    private static int InstallUnityHub(bool silent = false, bool nonInteractive = false) {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return InstallUnityHubWindows();
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) return InstallUnityHubMac();
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) return InstallUnityHubLinux();
+
+        Console.WriteLine("Unsupported platform for automatic Unity Hub installation.");
+        return 1;
+    }
+
+    private static int InstallUnityHubWindows() {
+        var hubUrl = "https://public-cdn.cloud.unity3d.com/hub/prod/UnityHubSetup.exe";
+        var tempFile = Path.Combine(Path.GetTempPath(), "UnityHubSetup.exe");
+
+        try {
+            // Download Unity Hub installer
+            Console.WriteLine("Downloading Unity Hub installer...");
+            using (var client = new HttpClient()) {
+                var response = client.GetAsync(hubUrl).Result;
+                response.EnsureSuccessStatusCode();
+
+                using (var fileStream = File.Create(tempFile)) {
+                    response.Content.CopyToAsync(fileStream).Wait();
+                }
+            }
+
+            // Run the installer silently
+            Console.WriteLine("Running Unity Hub installer...");
+            var processInfo = new ProcessStartInfo
+            {
+                FileName = tempFile,
+                Arguments = "/S", // Silent installation
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using (var process = Process.Start(processInfo)) {
+                if (process == null) {
+                    Console.WriteLine("Failed to start Unity Hub installer.");
+                    return 1;
+                }
+
+                process.WaitForExit();
+
+                if (process.ExitCode != 0) {
+                    Console.WriteLine($"Unity Hub installer failed with exit code: {process.ExitCode}");
+                    return process.ExitCode;
+                }
+            }
+
+            return 0;
+        }
+        catch (Exception ex) {
+            Console.WriteLine($"Error installing Unity Hub: {ex.Message}");
+            return 1;
+        }
+        finally {
+            // Clean up temp file
+            try {
+                if (File.Exists(tempFile)) File.Delete(tempFile);
+            }
+            catch {
+                // Ignore cleanup errors
+            }
+        }
+    }
+
+    private static int InstallUnityHubMac() {
+        var architecture = RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "darwin-arm64" : "darwin-x64";
+        var hubUrl = $"https://public-cdn.cloud.unity3d.com/hub/prod/UnityHub-{architecture}.dmg";
+        var tempFile = Path.Combine(Path.GetTempPath(), "UnityHub.dmg");
+
+        try {
+            Console.WriteLine($"Downloading Unity Hub installer for {architecture}...");
+            using (var client = new HttpClient()) {
+                var response = client.GetAsync(hubUrl).Result;
+                response.EnsureSuccessStatusCode();
+
+                using (var fileStream = File.Create(tempFile)) {
+                    response.Content.CopyToAsync(fileStream).Wait();
+                }
+            }
+
+            Console.WriteLine("Installing Unity Hub...");
+            var result = RunCommand("hdiutil", $"attach \"{tempFile}\" -nobrowse");
+            if (result != 0) {
+                Console.WriteLine("Failed to mount Unity Hub DMG.");
+                return 1;
+            }
+
+            // Copy Unity Hub to Applications
+            result = RunCommand("cp", "-R \"/Volumes/Unity Hub/Unity Hub.app\" \"/Applications/\"");
+            if (result != 0) {
+                Console.WriteLine("Failed to copy Unity Hub to Applications.");
+                return 1;
+            }
+
+            // Unmount DMG
+            RunCommand("hdiutil", "detach \"/Volumes/Unity Hub\"");
+
+            return 0;
+        }
+        catch (Exception ex) {
+            Console.WriteLine($"Error installing Unity Hub: {ex.Message}");
+            return 1;
+        }
+        finally {
+            try {
+                if (File.Exists(tempFile)) File.Delete(tempFile);
+            }
+            catch {
+                // Ignore cleanup errors
+            }
+        }
+    }
+
+    private static int InstallUnityHubLinux() {
+        Console.WriteLine("Please install Unity Hub manually on Linux:");
+        Console.WriteLine("1. Download Unity Hub from https://unity3d.com/get-unity/download");
+        Console.WriteLine("2. Extract and run the AppImage or install via your package manager");
+        Console.WriteLine("3. Run this tool again once Unity Hub is installed");
+        return 1;
+    }
+
+    private static int InstallUnityEditor(string version, bool silent = false, bool nonInteractive = false) {
+        try {
+            var hubPath = GetUnityHubExecutablePath();
+            if (string.IsNullOrEmpty(hubPath)) {
+                if (!silent) Console.WriteLine("Unity Hub not found. Cannot install Unity Editor.");
+                if (nonInteractive) {
+                    if (!silent) Console.WriteLine("Non-interactive mode: Exiting due to Unity Hub not found.");
+                    Environment.Exit(1);
+                }
+
+                return 1;
+            }
+
+            if (!silent) Console.WriteLine($"Installing Unity Editor {version} via Unity Hub CLI...");
+
+            // First try without changeset, then with if we can get it
+            var installArgs = $"-- --headless install --version {version}";
+
+            // Try to get changeset but don't fail if we can't
+            var changeset = GetUnityChangeset(version);
+            if (!string.IsNullOrEmpty(changeset)) {
+                installArgs += $" --changeset {changeset}";
+                if (!silent) Console.WriteLine($"Using changeset: {changeset}");
+            }
+            else if (!silent) Console.WriteLine("No changeset found, trying installation without it...");
+
+            // Use Unity Hub CLI to install the editor
+            var processInfo = new ProcessStartInfo
+            {
+                FileName = hubPath,
+                Arguments = installArgs,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+
+            using (var process = Process.Start(processInfo)) {
+                if (process == null) {
+                    Console.WriteLine("Failed to start Unity Hub CLI.");
+                    return 1;
+                }
+
+                // Filter Unity Hub output - always ignore [Experiment] lines, silent mode suppresses all
+                if (!silent) {
+                    process.OutputDataReceived += (_, e) =>
+                    {
+                        if (!string.IsNullOrEmpty(e.Data) && !e.Data.TrimStart().StartsWith("[Experiment"))
+                            Console.WriteLine(e.Data);
+                    };
+                    process.ErrorDataReceived += (_, e) =>
+                    {
+                        if (!string.IsNullOrEmpty(e.Data) && !e.Data.TrimStart().StartsWith("[Experiment"))
+                            Console.Error.WriteLine(e.Data);
+                    };
+                }
+                else {
+                    // Even in silent mode, consume output to prevent blocking
+                    process.OutputDataReceived += (_, e) =>
+                    {
+                        /* consume and discard */
+                    };
+                    process.ErrorDataReceived += (_, e) =>
+                    {
+                        /* consume and discard */
+                    };
+                }
+
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+                process.WaitForExit();
+
+                if (process.ExitCode != 0) {
+                    if (!silent) Console.WriteLine($"Unity Hub CLI failed with exit code: {process.ExitCode}");
+                    if (nonInteractive) {
+                        if (!silent) Console.WriteLine("Non-interactive mode: Exiting due to Unity Hub CLI failure.");
+                        Environment.Exit(process.ExitCode);
+                    }
+
+                    return process.ExitCode;
+                }
+            }
+
+            if (!silent) Console.WriteLine($"Unity Editor {version} installed successfully.");
+            return 0;
+        }
+        catch (Exception ex) {
+            if (!silent) Console.WriteLine($"Error installing Unity Editor: {ex.Message}");
+            if (nonInteractive) {
+                if (!silent) Console.WriteLine("Non-interactive mode: Exiting due to error.");
+                Environment.Exit(1);
+            }
+
+            return 1;
+        }
     }
 }

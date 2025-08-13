@@ -59,4 +59,9 @@
         </None>
         <Compile Remove="..\AssetBundleBuilder.Tests\**\*.cs"/>
     </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="GraphQL.Client" Version="6.1.0"/>
+        <PackageReference Include="GraphQL.Client.Serializer.SystemTextJson" Version="6.1.0"/>
+    </ItemGroup>
 </Project>

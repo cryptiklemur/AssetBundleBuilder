@@ -12,26 +12,6 @@ public static class UnityPathFinder {
             var versionPath = Path.Combine(basePath, version);
             var unityExe = GetUnityExecutablePath(versionPath);
             if (!string.IsNullOrEmpty(unityExe) && File.Exists(unityExe)) return unityExe;
-
-            try {
-                var directories = Directory.GetDirectories(basePath)
-                    .Select(d => Path.GetFileName(d))
-                    .Where(d => d.StartsWith(version.Split('.')[0]) && d.Contains(version.Split('.')[1]))
-                    .OrderByDescending(d => d)
-                    .ToArray();
-
-                foreach (var dir in directories) {
-                    var candidatePath = Path.Combine(basePath, dir);
-                    unityExe = GetUnityExecutablePath(candidatePath);
-                    if (!string.IsNullOrEmpty(unityExe) && File.Exists(unityExe)) {
-                        Console.WriteLine($"Using closest match: {dir} for requested version {version}");
-                        return unityExe;
-                    }
-                }
-            }
-            catch (Exception ex) {
-                Console.WriteLine($"Warning: Error searching {basePath}: {ex.Message}");
-            }
         }
 
         return null;

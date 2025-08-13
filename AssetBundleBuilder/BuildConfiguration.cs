@@ -12,4 +12,9 @@ public class BuildConfiguration {
     public bool CleanTempProject { get; set; } = false;
     public string LinkMethod { get; set; } = "copy"; // copy, symlink, hardlink, junction
     public string LogFile { get; set; } = string.Empty;
+    public bool AutoInstallHub { get; set; } = false;
+    public bool AutoInstallEditor { get; set; } = false;
+    public bool CiMode { get; set; } = false;
+    public bool Silent { get; set; } = false;
+    public bool NonInteractive { get; set; } = false;
 }

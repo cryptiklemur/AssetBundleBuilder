@@ -85,6 +85,15 @@ public static class ArgumentParser {
                 case "--logfile" when i + 1 < args.Length:
                     config.LogFile = Path.GetFullPath(args[++i]);
                     break;
+                case "--ci":
+                    config.CiMode = true;
+                    break;
+                case "--silent":
+                    config.Silent = true;
+                    break;
+                case "--non-interactive":
+                    config.NonInteractive = true;
+                    break;
             }
 
         if (string.IsNullOrEmpty(config.BundleName)) return null;
@@ -92,6 +101,9 @@ public static class ArgumentParser {
         config.BundleName = config.BundleName.ToLower().Replace(" ", "");
         config.AssetDirectory = Path.GetFullPath(config.AssetDirectory);
         config.OutputDirectory = Path.GetFullPath(config.OutputDirectory);
+
+        // Auto-detect CI environment
+        if (!config.CiMode && Environment.GetEnvironmentVariable("CI") == "true") config.CiMode = true;
 
         return config;
     }
