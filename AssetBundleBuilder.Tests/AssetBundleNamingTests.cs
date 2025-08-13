@@ -58,6 +58,15 @@ public class AssetBundleNamingTests : IDisposable {
             return;
         }
 
+        // Skip non-Windows builds in CI environments where Unity modules may not be installed
+        var isCI = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CI")) ||
+                   !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"));
+        
+        if (isCI && buildTarget != "windows") {
+            _output.WriteLine($"Skipping test: Non-Windows build target '{buildTarget}' in CI environment");
+            return;
+        }
+
         _output.WriteLine($"Testing naming: '{inputBundleName}' + '{buildTarget}' = '{expectedFileName}'");
 
         // Create build configuration
@@ -151,6 +160,15 @@ public class AssetBundleNamingTests : IDisposable {
         // Verify test assets exist
         if (!Directory.Exists(_testAssetsPath)) {
             _output.WriteLine($"Skipping test: TestAssets directory not found at {_testAssetsPath}");
+            return;
+        }
+
+        // Skip non-Windows builds in CI environments where Unity modules may not be installed
+        var isCI = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CI")) ||
+                   !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"));
+        
+        if (isCI && buildTarget != "windows") {
+            _output.WriteLine($"Skipping test: Non-Windows build target '{buildTarget}' in CI environment");
             return;
         }
 
