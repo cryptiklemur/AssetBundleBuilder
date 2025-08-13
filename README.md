@@ -27,10 +27,6 @@ assetbundlebuilder 2022.3.35f1 "/path/to/assets" "mybundle" "/path/to/output"
 
 Download the appropriate executable for your platform from the [Releases Page](https://github.com/CryptikLemur/AssetBundleBuilder/releases):
 
-- Windows: `AssetBundleBuilder-win-x64-v1.0.0.zip`
-- macOS Intel: `AssetBundleBuilder-osx-x64-v1.0.0.zip`
-- Linux x64: `AssetBundleBuilder-linux-x64-v1.0.0.zip`
-
 Extract and run the executable directly. No installation required.
 
 ## Quick Start
