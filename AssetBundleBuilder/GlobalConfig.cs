@@ -14,7 +14,15 @@ public enum VerbosityLevel
 public static class GlobalConfig
 {
     public static BuildConfiguration? Config { get; set; }
-    public static ILogger Logger { get; private set; } = Log.Logger;
+    public static ILogger Logger { get; private set; } = CreateDefaultLogger();
+
+    private static ILogger CreateDefaultLogger()
+    {
+        return new LoggerConfiguration()
+            .MinimumLevel.Information()
+            .WriteTo.Console(outputTemplate: "{Message:lj}{NewLine}")
+            .CreateLogger();
+    }
 
     public static void InitializeLogging(VerbosityLevel verbosity)
     {

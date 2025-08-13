@@ -163,23 +163,23 @@ The tool automatically searches these common Unity installation locations:
 - name: Install AssetBundleBuilder
   run: dotnet tool install --global CryptikLemur.AssetBundleBuilder
 
- - uses: buildalon/unity-setup@v1
-   with:
-     unity-version: 2022.3.35f1
-     build-targets: StandaloneWindows64 StandaloneOSX StandaloneLinux64
-     modules: windows-mono mac-mono linux-il2cpp
+- uses: buildalon/unity-setup@v1
+  with:
+    unity-version: 2022.3.35f1
+    build-targets: StandaloneWindows64 StandaloneOSX StandaloneLinux64
+    modules: windows-mono mac-mono linux-il2cpp
 
- - uses: buildalon/activate-unity-license@v1
-   with:
-     license: 'Personal'
-     username: ${{ secrets.UNITY_EMAIL }}
-     password: ${{ secrets.UNITY_PASSWORD }}
+- uses: buildalon/activate-unity-license@v1
+  with:
+    license: 'Personal'
+    username: ${{ secrets.UNITY_EMAIL }}
+    password: ${{ secrets.UNITY_PASSWORD }}
 
- - name: Build AssetBundles for Windows
-   run: |
-       assetbundlebuilder 2022.3.35f1 "./Assets" "mymod" "./Output" --target windows
-       assetbundlebuilder 2022.3.35f1 "./Assets" "mymod" "./Output" --target linux
-       assetbundlebuilder 2022.3.35f1 "./Assets" "mymod" "./Output" --target mac
+- name: Build AssetBundles for Windows
+  run: |
+      assetbundlebuilder 2022.3.35f1 "./Assets" "mymod" "./Output" --target windows
+      assetbundlebuilder 2022.3.35f1 "./Assets" "mymod" "./Output" --target linux
+      assetbundlebuilder 2022.3.35f1 "./Assets" "mymod" "./Output" --target mac
 ```
 
 ## Troubleshooting
