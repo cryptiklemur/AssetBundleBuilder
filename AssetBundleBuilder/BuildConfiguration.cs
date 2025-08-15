@@ -6,7 +6,7 @@ public class BuildConfiguration {
     public string AssetDirectory { get; set; } = string.Empty;
     public string OutputDirectory { get; set; } = string.Empty;
     public string BundleName { get; set; } = string.Empty;
-    public string BuildTarget { get; set; } = "windows";
+    public string BuildTarget { get; set; } = ""; // Empty means current OS without platform suffix
     public string TempProjectPath { get; set; } = string.Empty;
     public bool KeepTempProject { get; set; } = false;
     public bool CleanTempProject { get; set; } = false;

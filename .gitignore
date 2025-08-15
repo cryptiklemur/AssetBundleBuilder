@@ -107,6 +107,7 @@ $RECYCLE.BIN/
 
 # Test output directories
 TestOutput/
+test.*
 
 # Package manager files
 *.nupkg

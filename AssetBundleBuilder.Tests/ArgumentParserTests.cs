@@ -16,15 +16,15 @@ public class ArgumentParserTests {
     public void Parse_MinimalArgs_ShouldParseCorrectly() {
         var assetPath = GetTestPath("Assets");
         var outputPath = GetTestPath("Output");
-        var args = new[] { "2022.3.35f1", assetPath, "test.bundle", outputPath };
+        var args = new[] { "2022.3.35f1", assetPath, "testmod", outputPath };
         var config = ArgumentParser.Parse(args);
 
         Assert.NotNull(config);
         Assert.Equal("2022.3.35f1", config.UnityVersion);
         Assert.Equal(Path.GetFullPath(assetPath), config.AssetDirectory);
         Assert.Equal(Path.GetFullPath(outputPath), config.OutputDirectory);
-        Assert.Equal("test.bundle", config.BundleName);
-        Assert.Equal("windows", config.BuildTarget);
+        Assert.Equal("testmod", config.BundleName);
+        Assert.Equal("", config.BuildTarget); // Default is empty - auto-detected current OS without platform suffix
         Assert.Equal("copy", config.LinkMethod);
     }
 
@@ -33,21 +33,21 @@ public class ArgumentParserTests {
         using var tempUnity = new TempUnityFile("Unity");
         var assetPath = GetTestPath("Assets");
         var outputPath = GetTestPath("Output");
-        var args = new[] { tempUnity.Path, assetPath, "test.bundle", outputPath };
+        var args = new[] { tempUnity.Path, assetPath, "testmod", outputPath };
         var config = ArgumentParser.Parse(args);
 
         Assert.NotNull(config);
         Assert.Equal(tempUnity.Path, config.UnityPath);
         Assert.Equal(Path.GetFullPath(assetPath), config.AssetDirectory);
         Assert.Equal(Path.GetFullPath(outputPath), config.OutputDirectory);
-        Assert.Equal("test.bundle", config.BundleName);
+        Assert.Equal("testmod", config.BundleName);
     }
 
     [Fact]
     public void Parse_WithBuildTarget_ShouldParseCorrectly() {
         var assetPath = GetTestPath("Assets");
         var outputPath = GetTestPath("Output");
-        var args = new[] { "2022.3.35f1", assetPath, "test.bundle", outputPath, "--target", "windows" };
+        var args = new[] { "2022.3.35f1", assetPath, "testmod", outputPath, "--target", "windows" };
         var config = ArgumentParser.Parse(args);
 
         Assert.NotNull(config);
@@ -111,6 +111,21 @@ public class ArgumentParserTests {
         var args = new[] { "2022.3.35f1" };
         var config = ArgumentParser.Parse(args);
         Assert.Null(config);
+    }
+
+    [Theory]
+    [InlineData("test.framework")]
+    [InlineData("my.bundle")]
+    [InlineData("Test.Framework")]
+    [InlineData("My.Bundle")]
+    public void Parse_BundleNameWithForbiddenExtension_ShouldThrowException(string bundleName) {
+        var assetPath = GetTestPath("Assets");
+        var outputPath = GetTestPath("Output");
+        var args = new[] { "2022.3.35f1", assetPath, bundleName, outputPath };
+        
+        var exception = Assert.Throws<ArgumentException>(() => ArgumentParser.Parse(args));
+        Assert.Contains("cannot end with .framework or .bundle", exception.Message);
+        Assert.Contains(bundleName.ToLower(), exception.Message);
     }
 
     [Fact]

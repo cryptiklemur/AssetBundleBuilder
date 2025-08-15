@@ -108,6 +108,11 @@ public static class ArgumentParser {
         if (string.IsNullOrEmpty(config.BundleName)) return null;
 
         config.BundleName = config.BundleName.ToLower().Replace(" ", "");
+        
+        // Validate bundle name doesn't end with forbidden extensions
+        if (config.BundleName.EndsWith(".framework") || config.BundleName.EndsWith(".bundle")) {
+            throw new ArgumentException($"Bundle name '{config.BundleName}' cannot end with .framework or .bundle");
+        }
         config.AssetDirectory = Path.GetFullPath(config.AssetDirectory);
         config.OutputDirectory = Path.GetFullPath(config.OutputDirectory);
 

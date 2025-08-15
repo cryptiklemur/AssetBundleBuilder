@@ -25,6 +25,7 @@ public class ModAssetBundleBuilder
         var outputDirectory = "";
         var assetDirectory = "";
         var buildTarget = "all";
+        var noPlatformSuffix = false;
         for (int i = 0; i < arguments.Length; i++)
         {
             var arg = arguments[i];
@@ -68,6 +69,12 @@ public class ModAssetBundleBuilder
                     assetDirectory = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), assetDirectory));
                 }
                 Debug.Log($"Using asset directory: {assetDirectory}");
+                i++; // Skip the next argument since we've consumed it
+            }
+            else if (arg == "-noPlatformSuffix" && i + 1 < arguments.Length)
+            {
+                noPlatformSuffix = arguments[i + 1].ToLower() == "true";
+                Debug.Log($"No platform suffix: {noPlatformSuffix}");
                 i++; // Skip the next argument since we've consumed it
             }
         }
@@ -148,12 +155,14 @@ public class ModAssetBundleBuilder
         if (File.Exists(unityManifestFile)) File.Delete(unityManifestFile);
         if (File.Exists(unityManifestMetaFile)) File.Delete(unityManifestMetaFile);
 
-        // Generate the new naming format: resource_<bundlename>_<target>
+        // Generate the new naming format: resource_<bundlename>_<target> or resource_<bundlename> if no platform suffix
         // Convert periods to underscores in bundle name
         var normalizedBundleName = assetBundleName.Replace(".", "_");
-        var finalFileName = $"resource_{normalizedBundleName}_{buildTarget}";
+        var finalFileName = noPlatformSuffix 
+            ? $"resource_{normalizedBundleName}"
+            : $"resource_{normalizedBundleName}_{buildTarget}";
         
-        Debug.Log($"Bundle naming: '{assetBundleName}' -> '{finalFileName}'");
+        Debug.Log($"Bundle naming: '{assetBundleName}' -> '{finalFileName}' (no platform suffix: {noPlatformSuffix})");
         
         var originalBundleFile = Path.Combine(tempOutputLocation, assetBundleName);
         var originalManifestFile = Path.Combine(tempOutputLocation, assetBundleName + ".manifest");

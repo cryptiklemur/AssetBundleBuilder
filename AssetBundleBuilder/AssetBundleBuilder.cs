@@ -70,6 +70,17 @@ public static class Program {
 
         GlobalConfig.Logger.Information("Using bundle name: {BundleName}", config.BundleName);
 
+        // Determine if we're using auto-detected target (no platform suffix) or explicit target
+        var isAutoTarget = string.IsNullOrEmpty(config.BuildTarget);
+        
+        // If no build target specified, detect current OS and don't append platform suffix
+        if (isAutoTarget) {
+            config.BuildTarget = DetectCurrentOS();
+            GlobalConfig.Logger.Information("No target specified, using current OS: {BuildTarget} (no platform suffix)", config.BuildTarget);
+        } else {
+            GlobalConfig.Logger.Information("Using specified build target: {BuildTarget}", config.BuildTarget);
+        }
+
         // Convert user-friendly build target to Unity command line format
         var unityBuildTarget = ConvertBuildTarget(config.BuildTarget);
         GlobalConfig.Logger.Information("Unity build target: {BuildTarget}", unityBuildTarget);
@@ -77,7 +88,9 @@ public static class Program {
         // Create temporary Unity project if not specified
         if (string.IsNullOrEmpty(config.TempProjectPath)) {
             // Create hash from input parameters for consistent temp directory naming
-            var hashInput = $"{config.AssetDirectory}|{config.BundleName}|{config.BuildTarget}";
+            // Include a flag to distinguish between explicit and auto-detected targets
+            var targetForHash = isAutoTarget ? "auto" : config.BuildTarget;
+            var hashInput = $"{config.AssetDirectory}|{config.BundleName}|{targetForHash}";
             var hash = HashUtility.ComputeHash(hashInput);
             config.TempProjectPath = Path.Combine(Path.GetTempPath(), $"AssetBundleBuilder_{hash}");
         }
@@ -149,7 +162,9 @@ public static class Program {
                 "-output",
                 config.OutputDirectory,
                 "-assetDirectory",
-                config.AssetDirectory
+                config.AssetDirectory,
+                "-noPlatformSuffix",
+                isAutoTarget ? "true" : "false"
             ]);
 
             var unityArgs = unityArgsList.ToArray();
@@ -446,6 +461,13 @@ public static class Program {
 
         process.WaitForExit();
         return process.ExitCode;
+    }
+
+    private static string DetectCurrentOS() {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return "windows";
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) return "mac";
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) return "linux";
+        throw new PlatformNotSupportedException("Unsupported operating system");
     }
 
     private static string ConvertBuildTarget(string userBuildTarget) {
