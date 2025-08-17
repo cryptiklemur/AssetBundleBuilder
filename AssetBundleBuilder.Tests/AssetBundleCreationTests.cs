@@ -76,8 +76,7 @@ public class AssetBundleCreationTests : IDisposable {
             OutputDirectory = _testOutputPath,
             BundleName = "cryptiklemur.assetbuilder",
             BuildTarget = "windows",
-            KeepTempProject = true, // Keep temp project for debugging
-            CleanTempProject = true, // Start fresh
+            CleanTempProject = false, // Keep temp project for debugging
             LinkMethod = "copy" // Use copy method for testing
         };
 
@@ -85,7 +84,7 @@ public class AssetBundleCreationTests : IDisposable {
         var hashInput = $"{config.AssetDirectory}|{config.BundleName}|{config.BuildTarget}";
         var hash = HashUtility.ComputeHash(hashInput);
         config.TempProjectPath = Path.Combine(Path.GetTempPath(), $"AssetBundleBuilder_{hash}");
-        // Note: Not adding to _tempDirectoriesToCleanup since KeepTempProject = true
+        // Note: Not adding to _tempDirectoriesToCleanup since CleanTempProject = false
 
         _output.WriteLine($"Temp project path: {config.TempProjectPath}");
 
@@ -158,7 +157,6 @@ public class AssetBundleCreationTests : IDisposable {
             OutputDirectory = _testOutputPath,
             BundleName = inputBundleName,
             BuildTarget = "windows",
-            KeepTempProject = false,
             CleanTempProject = true,
             LinkMethod = "copy"
         };
@@ -208,7 +206,6 @@ public class AssetBundleCreationTests : IDisposable {
             OutputDirectory = _testOutputPath,
             BundleName = "windows.test",
             BuildTarget = "windows",
-            KeepTempProject = false,
             CleanTempProject = true,
             LinkMethod = "copy"
         };
@@ -266,7 +263,6 @@ public class AssetBundleCreationTests : IDisposable {
             OutputDirectory = _testOutputPath,
             BundleName = $"linktest.{linkMethod}",
             BuildTarget = "windows",
-            KeepTempProject = false,
             CleanTempProject = true,
             LinkMethod = linkMethod
         };
@@ -362,7 +358,6 @@ public class AssetBundleCreationTests : IDisposable {
             OutputDirectory = _testOutputPath,
             BundleName = "cache.test",
             BuildTarget = "windows",
-            KeepTempProject = true,
             CleanTempProject = false,
             LinkMethod = "copy"
         };

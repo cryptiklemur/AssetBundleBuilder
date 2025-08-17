@@ -8,7 +8,6 @@ public class BuildConfiguration {
     public string BundleName { get; set; } = string.Empty;
     public string BuildTarget { get; set; } = ""; // Empty means current OS without platform suffix
     public string TempProjectPath { get; set; } = string.Empty;
-    public bool KeepTempProject { get; set; } = false;
     public bool CleanTempProject { get; set; } = false;
     public string LinkMethod { get; set; } = "copy"; // copy, symlink, hardlink, junction
     public string LogFile { get; set; } = string.Empty;

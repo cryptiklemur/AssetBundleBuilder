@@ -220,8 +220,8 @@ public static class Program {
                 StopUnityHub();
             }
 
-            // Clean up temporary project unless requested to keep it
-            if (!config.KeepTempProject && Directory.Exists(config.TempProjectPath)) {
+            // Clean up temporary project only if explicitly requested
+            if (config.CleanTempProject && Directory.Exists(config.TempProjectPath)) {
                 try {
                     Directory.Delete(config.TempProjectPath, true);
                     GlobalConfig.Logger.Information("Cleaned up temporary project: {TempProjectPath}", config.TempProjectPath);
@@ -230,8 +230,8 @@ public static class Program {
                     GlobalConfig.Logger.Warning("Could not clean up temporary project: {Message}", ex.Message);
                 }
             }
-            else if (config.KeepTempProject)
-                GlobalConfig.Logger.Information("Temporary project kept at: {TempProjectPath}", config.TempProjectPath);
+            else if (!config.CleanTempProject && Directory.Exists(config.TempProjectPath))
+                GlobalConfig.Logger.Debug("Temporary project preserved at: {TempProjectPath}", config.TempProjectPath);
         }
     }
 
@@ -258,8 +258,7 @@ public static class Program {
         Console.WriteLine("  --bundle-name <name>   Override bundle name (alternative to positional argument)");
         Console.WriteLine("  --target <target>      Build target: windows, mac, or linux (default: windows)");
         Console.WriteLine("  --temp-project <path>  Custom path for temporary Unity project");
-        Console.WriteLine("  --keep-temp            Keep temporary Unity project after build (for debugging)");
-        Console.WriteLine("  --clean-temp           Delete existing temporary project and start over");
+        Console.WriteLine("  --clean-temp           Delete temporary project after build (default: keep for caching)");
         Console.WriteLine("  --copy                 Copy assets to Unity project (default)");
         Console.WriteLine("  --symlink              Create symbolic link to assets (faster builds)");
         Console.WriteLine("  --hardlink             Create hard links to assets (Windows/Unix)");

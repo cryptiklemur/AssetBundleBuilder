@@ -177,30 +177,22 @@ public class TempDirectoryTests : IDisposable {
     }
 
     [Fact]
-    public async Task KeepTempProject_ShouldNotCleanupAfterBuild() {
-        var tempDir = Path.Combine(Path.GetTempPath(), $"AssetBundleBuilder_Keep_{Guid.NewGuid():N}");
-        Directory.CreateDirectory(tempDir);
-        var testFile = Path.Combine(tempDir, "test.txt");
-        await File.WriteAllTextAsync(testFile, "test content");
-        _tempDirectoriesToCleanup.Add(tempDir);
-
+    public void DefaultBehavior_ShouldNotCleanupTempProject() {
         var config = new BuildConfiguration
         {
-            TempProjectPath = tempDir,
-            KeepTempProject = true
+            CleanTempProject = false
         };
 
         var shouldCleanup = ShouldCleanupTempProject(config);
 
         Assert.False(shouldCleanup);
-        Assert.True(Directory.Exists(tempDir));
     }
 
     [Fact]
-    public void DefaultBehavior_ShouldCleanupTempProject() {
+    public void CleanTempFlag_ShouldCleanupTempProject() {
         var config = new BuildConfiguration
         {
-            KeepTempProject = false
+            CleanTempProject = true
         };
 
         var shouldCleanup = ShouldCleanupTempProject(config);
@@ -251,6 +243,6 @@ public class TempDirectoryTests : IDisposable {
     }
 
     private static bool ShouldCleanupTempProject(BuildConfiguration config) {
-        return !config.KeepTempProject;
+        return config.CleanTempProject;
     }
 }

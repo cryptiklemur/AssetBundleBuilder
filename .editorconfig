@@ -1,21 +1,17 @@
 root = true
-# top-most EditorConfig file
 
 [*.cs]
 # Force block-scoped namespaces (with braces)
 csharp_style_namespace_declarations = file_scoped:suggestion
+csharp_indent_braces = false
+csharp_new_line_before_open_brace = false
 
 # Optional: indent settings
 indent_style = space
 indent_size = 4
 
 # Recommended: keep consistent file headers or documentation
-file_header_template = # Microsoft .NET properties
-
-
-
-csharp_indent_braces = false
-csharp_new_line_before_open_brace = accessors, anonymous_methods, anonymous_types, control_blocks, events, indexers, lambdas, object_collection_array_initializers, properties
+#file_header_template = # Microsoft .NET properties
 
 # ReSharper properties
 resharper_blank_lines_after_control_transfer_statements = 1

@@ -79,10 +79,6 @@ public class ArgumentParserTests {
     public void Parse_WithTempOptions_ShouldParseCorrectly() {
         var assetPath = GetTestPath("Assets");
         var outputPath = GetTestPath("Output");
-        var args1 = new[] { "2022.3.35f1", assetPath, "test", outputPath, "--keep-temp" };
-        var config1 = ArgumentParser.Parse(args1);
-        Assert.True(config1?.KeepTempProject);
-
         var args2 = new[] { "2022.3.35f1", assetPath, "test", outputPath, "--clean-temp" };
         var config2 = ArgumentParser.Parse(args2);
         Assert.True(config2?.CleanTempProject);

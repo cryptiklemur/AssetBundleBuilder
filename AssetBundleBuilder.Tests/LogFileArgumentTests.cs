@@ -91,8 +91,7 @@ public class LogFileArgumentTests {
             "--target",
             "linux",
             "--logfile",
-            logFilePath,
-            "--keep-temp"
+            logFilePath
         };
 
         // Act
@@ -102,7 +101,6 @@ public class LogFileArgumentTests {
         Assert.NotNull(config);
         Assert.Equal(Path.GetFullPath(logFilePath), config.LogFile);
         Assert.Equal("linux", config.BuildTarget);
-        Assert.True(config.KeepTempProject);
         Assert.Equal("testbundle", config.BundleName);
     }
 

@@ -64,9 +64,6 @@ public static class ArgumentParser {
                 case "--unity-version" when i + 1 < args.Length:
                     config.UnityVersion = args[++i];
                     break;
-                case "--keep-temp":
-                    config.KeepTempProject = true;
-                    break;
                 case "--clean-temp":
                     config.CleanTempProject = true;
                     break;

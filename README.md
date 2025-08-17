@@ -100,7 +100,7 @@ assetbundlebuilder <unity-path-or-version> <asset-directory> <bundle-name> [outp
 - `--bundle-name <name>`: Override bundle name (alternative to positional argument)
 - `--target <target>`: Build target: `windows`, `mac`, or `linux` (default: `windows`)
 - `--temp-project <path>`: Custom location for temporary Unity project
-- `--keep-temp`: Don't delete temporary project (for debugging)
+- `--clean-temp`: Delete temporary project after build (default: keep for caching)
 
 ## Examples
 
@@ -210,11 +210,14 @@ dotnet tool install --global AssetBundleBuilder.GlobalTool
 assetbundlebuilder 2022.3.35f1 "/path/to/assets" "valid_bundle_name" "/path/to/output"
 ```
 
-### Debugging
+### Caching and Performance
 
 ```bash
-# Keep temporary project for inspection
-assetbundlebuilder 2022.3.35f1 "/path/to/assets" "mybundle" "/path/to/output" --keep-temp
+# Default behavior: temp project is cached for faster rebuilds
+assetbundlebuilder 2022.3.35f1 "/path/to/assets" "mybundle" "/path/to/output"
+
+# Force clean build by deleting temp project after build
+assetbundlebuilder 2022.3.35f1 "/path/to/assets" "mybundle" "/path/to/output" --clean-temp
 ```
 
 ## Uninstallation

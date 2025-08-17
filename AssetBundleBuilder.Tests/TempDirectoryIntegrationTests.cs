@@ -119,12 +119,12 @@ public class TempDirectoryIntegrationTests : IDisposable {
     }
 
     [Theory]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    public void TempDirectory_CleanupFlags_ShouldBehaveDifferently(bool keepTemp, bool shouldCleanup) {
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    public void TempDirectory_CleanupFlags_ShouldBehaveDifferently(bool cleanTemp, bool shouldCleanup) {
         var config = new BuildConfiguration
         {
-            KeepTempProject = keepTemp
+            CleanTempProject = cleanTemp
         };
 
         var actualShouldCleanup = ShouldCleanupTempProject(config);
@@ -203,6 +203,6 @@ public class TempDirectoryIntegrationTests : IDisposable {
     }
 
     private static bool ShouldCleanupTempProject(BuildConfiguration config) {
-        return !config.KeepTempProject;
+        return config.CleanTempProject;
     }
 }

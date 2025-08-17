@@ -78,7 +78,6 @@ public class AssetBundleNamingTests : IDisposable {
             OutputDirectory = _testOutputPath,
             BundleName = inputBundleName,
             BuildTarget = buildTarget,
-            KeepTempProject = false,
             CleanTempProject = true,
             LinkMethod = "copy"
         };
@@ -204,7 +203,6 @@ public class AssetBundleNamingTests : IDisposable {
             OutputDirectory = _testOutputPath,
             BundleName = bundleName,
             BuildTarget = buildTarget,
-            KeepTempProject = false,
             CleanTempProject = true,
             LinkMethod = "copy"
         };
@@ -257,7 +255,6 @@ public class AssetBundleNamingTests : IDisposable {
             OutputDirectory = _testOutputPath,
             BundleName = bundleName,
             BuildTarget = "", // Empty string means auto-detect current OS without platform suffix
-            KeepTempProject = false,
             CleanTempProject = true,
             LinkMethod = "copy"
         };
