@@ -16,4 +16,5 @@ public class BuildConfiguration {
     public bool CiMode { get; set; } = false;
     public VerbosityLevel Verbosity { get; set; } = VerbosityLevel.Normal;
     public bool NonInteractive { get; set; } = false;
+    public List<string> ExcludePatterns { get; set; } = new List<string>();
 }

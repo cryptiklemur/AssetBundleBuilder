@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.Json;
-using Serilog;
+using System.Text.RegularExpressions;
 
 namespace CryptikLemur.AssetBundleBuilder;
 
@@ -9,7 +9,9 @@ public static class Program {
     private static int Main(string[] args) {
         if (args.Length < 2) {
             ShowHelp();
-            return 1;
+            return args.Length == 0 ? 0 : 1;
+
+            ;
         }
 
         var config = ArgumentParser.Parse(args);
@@ -44,12 +46,15 @@ public static class Program {
                 }
 
                 if (string.IsNullOrEmpty(config.UnityPath)) {
-                    GlobalConfig.Logger.Error("Could not find Unity {UnityVersion} installation even after attempted installation", config.UnityVersion);
+                    GlobalConfig.Logger.Error(
+                        "Could not find Unity {UnityVersion} installation even after attempted installation",
+                        config.UnityVersion);
                     return 1;
                 }
             }
 
-            GlobalConfig.Logger.Information("Found Unity {UnityVersion} at: {UnityPath}", config.UnityVersion, config.UnityPath);
+            GlobalConfig.Logger.Information("Found Unity {UnityVersion} at: {UnityPath}", config.UnityVersion,
+                config.UnityPath);
         }
 
         // Validate paths
@@ -72,14 +77,14 @@ public static class Program {
 
         // Determine if we're using auto-detected target (no platform suffix) or explicit target
         var isAutoTarget = string.IsNullOrEmpty(config.BuildTarget);
-        
+
         // If no build target specified, detect current OS and don't append platform suffix
         if (isAutoTarget) {
             config.BuildTarget = DetectCurrentOS();
-            GlobalConfig.Logger.Information("No target specified, using current OS: {BuildTarget} (no platform suffix)", config.BuildTarget);
-        } else {
-            GlobalConfig.Logger.Information("Using specified build target: {BuildTarget}", config.BuildTarget);
+            GlobalConfig.Logger.Information("No target specified, using current OS: {BuildTarget} (no platform suffix)",
+                config.BuildTarget);
         }
+        else GlobalConfig.Logger.Information("Using specified build target: {BuildTarget}", config.BuildTarget);
 
         // Convert user-friendly build target to Unity command line format
         var unityBuildTarget = ConvertBuildTarget(config.BuildTarget);
@@ -99,7 +104,8 @@ public static class Program {
         if (config.CleanTempProject && Directory.Exists(config.TempProjectPath)) {
             try {
                 Directory.Delete(config.TempProjectPath, true);
-                GlobalConfig.Logger.Information("Cleaned up existing temp project: {TempProjectPath}", config.TempProjectPath);
+                GlobalConfig.Logger.Information("Cleaned up existing temp project: {TempProjectPath}",
+                    config.TempProjectPath);
             }
             catch (Exception ex) {
                 GlobalConfig.Logger.Warning("Could not clean up existing temp project: {Message}", ex.Message);
@@ -133,11 +139,11 @@ public static class Program {
             }
 
             // Create temporary Unity project
-            CreateUnityProject(config.TempProjectPath, config.AssetDirectory, config.BundleName, config.LinkMethod);
+            CreateUnityProject(config.TempProjectPath, config.AssetDirectory, config.BundleName, config.LinkMethod,
+                config.ExcludePatterns);
 
             // Build Unity command line arguments
-            var unityArgsList = new List<string>
-            {
+            var unityArgsList = new List<string> {
                 "-batchmode",
                 "-nographics",
                 "-quit"
@@ -169,8 +175,7 @@ public static class Program {
 
             var unityArgs = unityArgsList.ToArray();
 
-            var processInfo = new ProcessStartInfo
-            {
+            var processInfo = new ProcessStartInfo {
                 FileName = config.UnityPath,
                 Arguments = string.Join(" ", unityArgs.Select(arg => arg.Contains(" ") ? $"\"{arg}\"" : arg)),
                 UseShellExecute = false,
@@ -184,13 +189,11 @@ public static class Program {
                 if (process == null) throw new Exception("Launching Unity failed.");
 
                 // Read Unity output based on verbosity level
-                process.OutputDataReceived += (_, e) =>
-                {
+                process.OutputDataReceived += (_, e) => {
                     if (!string.IsNullOrEmpty(e.Data) && !e.Data.TrimStart().StartsWith("[Experiment"))
                         GlobalConfig.Logger.Debug("Unity: {Output}", e.Data);
                 };
-                process.ErrorDataReceived += (_, e) =>
-                {
+                process.ErrorDataReceived += (_, e) => {
                     if (!string.IsNullOrEmpty(e.Data) && !e.Data.TrimStart().StartsWith("[Experiment"))
                         GlobalConfig.Logger.Debug("Unity Error: {Output}", e.Data);
                 };
@@ -224,7 +227,8 @@ public static class Program {
             if (config.CleanTempProject && Directory.Exists(config.TempProjectPath)) {
                 try {
                     Directory.Delete(config.TempProjectPath, true);
-                    GlobalConfig.Logger.Information("Cleaned up temporary project: {TempProjectPath}", config.TempProjectPath);
+                    GlobalConfig.Logger.Information("Cleaned up temporary project: {TempProjectPath}",
+                        config.TempProjectPath);
                 }
                 catch (Exception ex) {
                     GlobalConfig.Logger.Warning("Could not clean up temporary project: {Message}", ex.Message);
@@ -269,6 +273,7 @@ public static class Program {
         Console.WriteLine("  -v, --verbose          Show info, warnings, and errors (default)");
         Console.WriteLine("  -vv, --debug           Show all messages including debug output");
         Console.WriteLine("  --non-interactive      Auto-answer yes to prompts, exit on errors");
+        Console.WriteLine("  --exclude <pattern>    Exclude files matching glob pattern (can be used multiple times)");
         Console.WriteLine();
         Console.WriteLine("Examples:");
         Console.WriteLine("  AssetBundleBuilder 2022.3.5f1 \"C:\\MyMod\\Assets\" \"C:\\MyMod\\Output\" \"mymod\"");
@@ -276,10 +281,12 @@ public static class Program {
             "  AssetBundleBuilder --unity-version 2022.3.5f1 \"C:\\MyMod\\Assets\" \"C:\\MyMod\\Output\" \"author.modname\"");
         Console.WriteLine(
             "  AssetBundleBuilder \"C:\\Unity\\Editor\\Unity.exe\" \"C:\\MyMod\\Assets\" \"C:\\MyMod\\Output\" \"mymod\"");
+        Console.WriteLine(
+            "  AssetBundleBuilder 2022.3.5f1 ./assets ./output mymod --exclude \"*.tmp\" --exclude \"backup/*\"");
     }
 
     private static void CreateUnityProject(string projectPath, string assetDirectory, string bundleName,
-        string linkMethod) {
+        string linkMethod, List<string> excludePatterns) {
         GlobalConfig.Logger.Information("Creating temporary Unity project at: {ProjectPath}", projectPath);
 
         // Create project structure
@@ -300,7 +307,7 @@ public static class Program {
 
         // Link assets from source directory to Unity project
         var targetPath = Path.Combine(projectPath, "Assets", "Data", bundleName);
-        LinkAssets(assetDirectory, targetPath, linkMethod);
+        LinkAssets(assetDirectory, targetPath, linkMethod, excludePatterns);
 
         GlobalConfig.Logger.Information("Unity project created successfully");
     }
@@ -328,7 +335,8 @@ public static class Program {
 
     // Unity scripts are now copied from UnityScripts/ directory instead of being embedded
 
-    private static void LinkAssets(string sourceDirectory, string targetPath, string linkMethod) {
+    private static void LinkAssets(string sourceDirectory, string targetPath, string linkMethod,
+        List<string> excludePatterns) {
         GlobalConfig.Logger.Information("Linking assets using method: {LinkMethod}", linkMethod);
         GlobalConfig.Logger.Debug("Source: {SourceDirectory}", sourceDirectory);
         GlobalConfig.Logger.Debug("Target: {TargetPath}", targetPath);
@@ -342,7 +350,7 @@ public static class Program {
 
         switch (linkMethod.ToLower()) {
             case "copy":
-                CopyDirectory(sourceDirectory, targetPath);
+                CopyDirectory(sourceDirectory, targetPath, excludePatterns);
                 GlobalConfig.Logger.Information("Assets copied successfully");
                 break;
             case "symlink":
@@ -350,7 +358,7 @@ public static class Program {
                 GlobalConfig.Logger.Information("Symbolic link created successfully");
                 break;
             case "hardlink":
-                CreateHardLink(sourceDirectory, targetPath);
+                CreateHardLink(sourceDirectory, targetPath, excludePatterns);
                 GlobalConfig.Logger.Information("Hard links created successfully");
                 break;
             case "junction":
@@ -363,14 +371,32 @@ public static class Program {
     }
 
     // CopyDirectory helper method
-    private static void CopyDirectory(string sourceDir, string destDir) {
+    private static void CopyDirectory(string sourceDir, string destDir, List<string>? excludePatterns = null) {
         Directory.CreateDirectory(destDir);
 
-        foreach (var dirPath in Directory.GetDirectories(sourceDir, "*", SearchOption.AllDirectories))
-            Directory.CreateDirectory(dirPath.Replace(sourceDir, destDir));
+        foreach (var dirPath in Directory.GetDirectories(sourceDir, "*", SearchOption.AllDirectories)) {
+            var relativePath = Path.GetRelativePath(sourceDir, dirPath);
+            if (excludePatterns != null && IsExcluded(relativePath, excludePatterns)) {
+                GlobalConfig.Logger.Debug("Excluding directory: {Directory}", relativePath);
+                continue;
+            }
 
-        foreach (var newPath in Directory.GetFiles(sourceDir, "*.*", SearchOption.AllDirectories))
-            File.Copy(newPath, newPath.Replace(sourceDir, destDir), true);
+            Directory.CreateDirectory(dirPath.Replace(sourceDir, destDir));
+        }
+
+        foreach (var filePath in Directory.GetFiles(sourceDir, "*.*", SearchOption.AllDirectories)) {
+            var relativePath = Path.GetRelativePath(sourceDir, filePath);
+            if (excludePatterns != null && IsExcluded(relativePath, excludePatterns)) {
+                GlobalConfig.Logger.Debug("Excluding file: {File}", relativePath);
+                continue;
+            }
+
+            var destPath = filePath.Replace(sourceDir, destDir);
+            var destDirPath = Path.GetDirectoryName(destPath);
+            if (destDirPath != null && !Directory.Exists(destDirPath))
+                Directory.CreateDirectory(destDirPath);
+            File.Copy(filePath, destPath, true);
+        }
     }
 
     private static void CreateSymbolicLink(string sourceDirectory, string targetPath) {
@@ -386,18 +412,29 @@ public static class Program {
         }
     }
 
-    private static void CreateHardLink(string sourceDirectory, string targetPath) {
+    private static void CreateHardLink(string sourceDirectory, string targetPath,
+        List<string>? excludePatterns = null) {
         // Hard links work differently - we need to recursively create hard links for files
         Directory.CreateDirectory(targetPath);
 
         foreach (var dirPath in Directory.GetDirectories(sourceDirectory, "*", SearchOption.AllDirectories)) {
             var relativePath = Path.GetRelativePath(sourceDirectory, dirPath);
+            if (excludePatterns != null && IsExcluded(relativePath, excludePatterns)) {
+                GlobalConfig.Logger.Debug("Excluding directory: {Directory}", relativePath);
+                continue;
+            }
+
             var targetDirPath = Path.Combine(targetPath, relativePath);
             Directory.CreateDirectory(targetDirPath);
         }
 
         foreach (var filePath in Directory.GetFiles(sourceDirectory, "*.*", SearchOption.AllDirectories)) {
             var relativePath = Path.GetRelativePath(sourceDirectory, filePath);
+            if (excludePatterns != null && IsExcluded(relativePath, excludePatterns)) {
+                GlobalConfig.Logger.Debug("Excluding file: {File}", relativePath);
+                continue;
+            }
+
             var targetFilePath = Path.Combine(targetPath, relativePath);
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
@@ -426,14 +463,63 @@ public static class Program {
             throw new InvalidOperationException($"Failed to create junction. Exit code: {result}");
     }
 
+    private static bool IsExcluded(string relativePath, List<string>? excludePatterns) {
+        if (excludePatterns == null || excludePatterns.Count == 0)
+            return false;
+
+        // Normalize path separators for consistent matching
+        var normalizedPath = relativePath.Replace('\\', '/');
+
+        foreach (var pattern in excludePatterns) {
+            // Convert glob pattern to regex
+            var regexPattern = GlobToRegex(pattern);
+            if (Regex.IsMatch(normalizedPath, regexPattern, RegexOptions.IgnoreCase)) return true;
+        }
+
+        return false;
+    }
+
+    private static string GlobToRegex(string glob) {
+        // Normalize path separators
+        glob = glob.Replace('\\', '/');
+
+        // Handle special case of **/ - matches any number of directories (including zero)
+        if (glob.StartsWith("**/")) {
+            var remainder = glob.Substring(3);
+            var escapedRemainder = Regex.Escape(remainder)
+                .Replace("\\*", "[^/]*") // * matches any character except /
+                .Replace("\\?", "."); // ? matches single character
+
+            // **/ allows the file to be at root or any depth
+            return "^(.*/)?" + escapedRemainder + "$";
+        }
+
+        // Escape regex special characters except * and ?
+        var escaped = Regex.Escape(glob);
+
+        // Handle ** before * to avoid incorrect replacements
+        escaped = escaped.Replace("\\*\\*", ".*"); // ** matches anything
+        escaped = escaped.Replace("\\*", "[^/]*"); // * matches any character except /
+        escaped = escaped.Replace("\\?", "."); // ? matches single character
+
+        // If pattern doesn't start with /, it can match at any depth
+        if (!glob.StartsWith("/"))
+            escaped = "(^|.*/)" + escaped;
+
+        // If pattern ends with /, match directories
+        if (glob.EndsWith("/"))
+            escaped = escaped + ".*";
+
+        return "^" + escaped + "$";
+    }
+
     private static int RunCommand(string command, string arguments) {
         ProcessStartInfo processInfo;
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && command == "mklink")
             // mklink is a built-in Windows command, must be run through cmd.exe
         {
-            processInfo = new ProcessStartInfo
-            {
+            processInfo = new ProcessStartInfo {
                 FileName = "cmd.exe",
                 Arguments = $"/C {command} {arguments}",
                 UseShellExecute = false,
@@ -443,8 +529,7 @@ public static class Program {
             };
         }
         else {
-            processInfo = new ProcessStartInfo
-            {
+            processInfo = new ProcessStartInfo {
                 FileName = command,
                 Arguments = arguments,
                 UseShellExecute = false,
@@ -466,12 +551,12 @@ public static class Program {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return "windows";
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) return "mac";
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) return "linux";
+
         throw new PlatformNotSupportedException("Unsupported operating system");
     }
 
     private static string ConvertBuildTarget(string userBuildTarget) {
-        return userBuildTarget.ToLower() switch
-        {
+        return userBuildTarget.ToLower() switch {
             "windows" => "StandaloneWindows64",
             "mac" => "StandaloneOSX",
             "linux" => "StandaloneLinux64",
@@ -483,7 +568,8 @@ public static class Program {
         GlobalConfig.Logger.Warning("Unity {Version} was not found on this system", version);
 
         if (nonInteractive) {
-            GlobalConfig.Logger.Information("Non-interactive mode: Automatically installing Unity Hub and Unity Editor...");
+            GlobalConfig.Logger.Information(
+                "Non-interactive mode: Automatically installing Unity Hub and Unity Editor...");
         }
         else {
             Console.WriteLine("Would you like to automatically download and install Unity Hub and Unity Editor? (Y/n)");
@@ -502,7 +588,8 @@ public static class Program {
                 if (hubResult != 0) {
                     GlobalConfig.Logger.Error("Failed to install Unity Hub");
                     if (nonInteractive) {
-                        GlobalConfig.Logger.Error("Non-interactive mode: Exiting due to Unity Hub installation failure");
+                        GlobalConfig.Logger.Error(
+                            "Non-interactive mode: Exiting due to Unity Hub installation failure");
                         return hubResult;
                     }
 
@@ -541,8 +628,7 @@ public static class Program {
 
     private static string? GetUnityHubExecutablePath() {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
-            var hubPaths = new[]
-            {
+            var hubPaths = new[] {
                 @"C:\Program Files\Unity Hub\Unity Hub.exe",
                 @"C:\Program Files (x86)\Unity Hub\Unity Hub.exe"
             };
@@ -556,8 +642,7 @@ public static class Program {
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) {
             // Check common Linux installation paths
-            var hubPaths = new[]
-            {
+            var hubPaths = new[] {
                 "/opt/unityhub/unityhub",
                 "/usr/bin/unityhub"
             };
@@ -582,8 +667,7 @@ public static class Program {
             var hubPath = GetUnityHubExecutablePath();
             if (string.IsNullOrEmpty(hubPath)) return false;
 
-            var processInfo = new ProcessStartInfo
-            {
+            var processInfo = new ProcessStartInfo {
                 FileName = hubPath,
                 UseShellExecute = false,
                 CreateNoWindow = true,
@@ -596,12 +680,10 @@ public static class Program {
             if (process == null) return false;
 
             // Consume Unity Hub output to prevent it from appearing in console
-            process.OutputDataReceived += (_, e) =>
-            {
+            process.OutputDataReceived += (_, e) => {
                 /* consume and discard */
             };
-            process.ErrorDataReceived += (_, e) =>
-            {
+            process.ErrorDataReceived += (_, e) => {
                 /* consume and discard */
             };
 
@@ -698,8 +780,7 @@ public static class Program {
 
             // Run the installer silently
             GlobalConfig.Logger.Information("Running Unity Hub installer...");
-            var processInfo = new ProcessStartInfo
-            {
+            var processInfo = new ProcessStartInfo {
                 FileName = tempFile,
                 Arguments = "/S", // Silent installation
                 UseShellExecute = false,
@@ -715,7 +796,8 @@ public static class Program {
                 process.WaitForExit();
 
                 if (process.ExitCode != 0) {
-                    GlobalConfig.Logger.Error("Unity Hub installer failed with exit code: {ExitCode}", process.ExitCode);
+                    GlobalConfig.Logger.Error("Unity Hub installer failed with exit code: {ExitCode}",
+                        process.ExitCode);
                     return process.ExitCode;
                 }
             }
@@ -821,8 +903,7 @@ public static class Program {
             else GlobalConfig.Logger.Information("No changeset found, trying installation without it...");
 
             // Use Unity Hub CLI to install the editor
-            var processInfo = new ProcessStartInfo
-            {
+            var processInfo = new ProcessStartInfo {
                 FileName = hubPath,
                 Arguments = installArgs,
                 UseShellExecute = false,
@@ -838,13 +919,11 @@ public static class Program {
                 }
 
                 // Filter Unity Hub output - always ignore [Experiment] lines
-                process.OutputDataReceived += (_, e) =>
-                {
+                process.OutputDataReceived += (_, e) => {
                     if (!string.IsNullOrEmpty(e.Data) && !e.Data.TrimStart().StartsWith("[Experiment"))
                         GlobalConfig.Logger.Debug("Unity Hub: {Output}", e.Data);
                 };
-                process.ErrorDataReceived += (_, e) =>
-                {
+                process.ErrorDataReceived += (_, e) => {
                     if (!string.IsNullOrEmpty(e.Data) && !e.Data.TrimStart().StartsWith("[Experiment"))
                         GlobalConfig.Logger.Debug("Unity Hub Error: {Output}", e.Data);
                 };

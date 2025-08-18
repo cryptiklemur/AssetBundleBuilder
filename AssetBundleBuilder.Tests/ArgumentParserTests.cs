@@ -135,6 +135,44 @@ public class ArgumentParserTests {
         Assert.Equal(Path.GetFullPath(Path.Combine(currentDir, "Output")), config.OutputDirectory);
     }
 
+    [Fact]
+    public void Parse_WithSingleExclude_ShouldAddPattern() {
+        var assetPath = GetTestPath("Assets");
+        var outputPath = GetTestPath("Output");
+        var args = new[] { "2022.3.35f1", assetPath, "testmod", outputPath, "--exclude", "*.tmp" };
+        var config = ArgumentParser.Parse(args);
+
+        Assert.NotNull(config);
+        Assert.Single(config.ExcludePatterns);
+        Assert.Contains("*.tmp", config.ExcludePatterns);
+    }
+
+    [Fact]
+    public void Parse_WithMultipleExcludes_ShouldAddAllPatterns() {
+        var assetPath = GetTestPath("Assets");
+        var outputPath = GetTestPath("Output");
+        var args = new[] { "2022.3.35f1", assetPath, "testmod", outputPath, 
+            "--exclude", "*.tmp", "--exclude", "backup/*", "--exclude", "*.bak" };
+        var config = ArgumentParser.Parse(args);
+
+        Assert.NotNull(config);
+        Assert.Equal(3, config.ExcludePatterns.Count);
+        Assert.Contains("*.tmp", config.ExcludePatterns);
+        Assert.Contains("backup/*", config.ExcludePatterns);
+        Assert.Contains("*.bak", config.ExcludePatterns);
+    }
+
+    [Fact]
+    public void Parse_WithoutExclude_ShouldHaveEmptyList() {
+        var assetPath = GetTestPath("Assets");
+        var outputPath = GetTestPath("Output");
+        var args = new[] { "2022.3.35f1", assetPath, "testmod", outputPath };
+        var config = ArgumentParser.Parse(args);
+
+        Assert.NotNull(config);
+        Assert.Empty(config.ExcludePatterns);
+    }
+
     private class TempUnityFile : IDisposable {
         public TempUnityFile(string baseFileName) {
             // Use platform-appropriate Unity executable name

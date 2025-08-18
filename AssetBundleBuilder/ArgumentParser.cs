@@ -100,6 +100,9 @@ public static class ArgumentParser {
                 case "--non-interactive":
                     config.NonInteractive = true;
                     break;
+                case "--exclude" when i + 1 < args.Length:
+                    config.ExcludePatterns.Add(args[++i]);
+                    break;
             }
 
         if (string.IsNullOrEmpty(config.BundleName)) return null;
