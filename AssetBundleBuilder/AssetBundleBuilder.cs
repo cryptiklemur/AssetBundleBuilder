@@ -140,7 +140,7 @@ public static class Program {
 
             // Create temporary Unity project
             CreateUnityProject(config.TempProjectPath, config.AssetDirectory, config.BundleName, config.LinkMethod,
-                config.ExcludePatterns);
+                config.ExcludePatterns, config.IncludePatterns);
 
             // Build Unity command line arguments
             var unityArgsList = new List<string> {
@@ -274,6 +274,7 @@ public static class Program {
         Console.WriteLine("  -vv, --debug           Show all messages including debug output");
         Console.WriteLine("  --non-interactive      Auto-answer yes to prompts, exit on errors");
         Console.WriteLine("  --exclude <pattern>    Exclude files matching glob pattern (can be used multiple times)");
+        Console.WriteLine("  --include <pattern>    Include only files matching glob pattern (can be used multiple times)");
         Console.WriteLine();
         Console.WriteLine("Examples:");
         Console.WriteLine("  AssetBundleBuilder 2022.3.5f1 \"C:\\MyMod\\Assets\" \"C:\\MyMod\\Output\" \"mymod\"");
@@ -283,10 +284,14 @@ public static class Program {
             "  AssetBundleBuilder \"C:\\Unity\\Editor\\Unity.exe\" \"C:\\MyMod\\Assets\" \"C:\\MyMod\\Output\" \"mymod\"");
         Console.WriteLine(
             "  AssetBundleBuilder 2022.3.5f1 ./assets ./output mymod --exclude \"*.tmp\" --exclude \"backup/*\"");
+        Console.WriteLine(
+            "  AssetBundleBuilder 2022.3.5f1 ./assets ./output mymod --include \"*.png\" --include \"*.jpg\"");
+        Console.WriteLine(
+            "  AssetBundleBuilder 2022.3.5f1 ./assets ./output mymod --include \"Textures/*\" --exclude \"*.backup\"");
     }
 
     private static void CreateUnityProject(string projectPath, string assetDirectory, string bundleName,
-        string linkMethod, List<string> excludePatterns) {
+        string linkMethod, List<string> excludePatterns, List<string> includePatterns) {
         GlobalConfig.Logger.Information("Creating temporary Unity project at: {ProjectPath}", projectPath);
 
         // Create project structure
@@ -307,7 +312,7 @@ public static class Program {
 
         // Link assets from source directory to Unity project
         var targetPath = Path.Combine(projectPath, "Assets", "Data", bundleName);
-        LinkAssets(assetDirectory, targetPath, linkMethod, excludePatterns);
+        LinkAssets(assetDirectory, targetPath, linkMethod, excludePatterns, includePatterns);
 
         GlobalConfig.Logger.Information("Unity project created successfully");
     }
@@ -336,7 +341,7 @@ public static class Program {
     // Unity scripts are now copied from UnityScripts/ directory instead of being embedded
 
     private static void LinkAssets(string sourceDirectory, string targetPath, string linkMethod,
-        List<string> excludePatterns) {
+        List<string> excludePatterns, List<string> includePatterns) {
         GlobalConfig.Logger.Information("Linking assets using method: {LinkMethod}", linkMethod);
         GlobalConfig.Logger.Debug("Source: {SourceDirectory}", sourceDirectory);
         GlobalConfig.Logger.Debug("Target: {TargetPath}", targetPath);
@@ -348,9 +353,14 @@ public static class Program {
         var parentDir = Path.GetDirectoryName(targetPath)!;
         if (!Directory.Exists(parentDir)) Directory.CreateDirectory(parentDir);
 
+        // Validate include patterns match files before proceeding
+        if (includePatterns.Count > 0) {
+            ValidateIncludePatterns(sourceDirectory, includePatterns);
+        }
+
         switch (linkMethod.ToLower()) {
             case "copy":
-                CopyDirectory(sourceDirectory, targetPath, excludePatterns);
+                CopyDirectory(sourceDirectory, targetPath, excludePatterns, includePatterns);
                 GlobalConfig.Logger.Information("Assets copied successfully");
                 break;
             case "symlink":
@@ -358,7 +368,7 @@ public static class Program {
                 GlobalConfig.Logger.Information("Symbolic link created successfully");
                 break;
             case "hardlink":
-                CreateHardLink(sourceDirectory, targetPath, excludePatterns);
+                CreateHardLink(sourceDirectory, targetPath, excludePatterns, includePatterns);
                 GlobalConfig.Logger.Information("Hard links created successfully");
                 break;
             case "junction":
@@ -371,11 +381,18 @@ public static class Program {
     }
 
     // CopyDirectory helper method
-    private static void CopyDirectory(string sourceDir, string destDir, List<string>? excludePatterns = null) {
+    private static void CopyDirectory(string sourceDir, string destDir, List<string>? excludePatterns = null, List<string>? includePatterns = null) {
         Directory.CreateDirectory(destDir);
 
         foreach (var dirPath in Directory.GetDirectories(sourceDir, "*", SearchOption.AllDirectories)) {
             var relativePath = Path.GetRelativePath(sourceDir, dirPath);
+            
+            // Apply includes first (if specified), then excludes
+            if (includePatterns != null && includePatterns.Count > 0 && !IsIncluded(relativePath, includePatterns)) {
+                GlobalConfig.Logger.Debug("Not included directory: {Directory}", relativePath);
+                continue;
+            }
+            
             if (excludePatterns != null && IsExcluded(relativePath, excludePatterns)) {
                 GlobalConfig.Logger.Debug("Excluding directory: {Directory}", relativePath);
                 continue;
@@ -386,6 +403,13 @@ public static class Program {
 
         foreach (var filePath in Directory.GetFiles(sourceDir, "*.*", SearchOption.AllDirectories)) {
             var relativePath = Path.GetRelativePath(sourceDir, filePath);
+            
+            // Apply includes first (if specified), then excludes
+            if (includePatterns != null && includePatterns.Count > 0 && !IsIncluded(relativePath, includePatterns)) {
+                GlobalConfig.Logger.Debug("Not included file: {File}", relativePath);
+                continue;
+            }
+            
             if (excludePatterns != null && IsExcluded(relativePath, excludePatterns)) {
                 GlobalConfig.Logger.Debug("Excluding file: {File}", relativePath);
                 continue;
@@ -413,12 +437,19 @@ public static class Program {
     }
 
     private static void CreateHardLink(string sourceDirectory, string targetPath,
-        List<string>? excludePatterns = null) {
+        List<string>? excludePatterns = null, List<string>? includePatterns = null) {
         // Hard links work differently - we need to recursively create hard links for files
         Directory.CreateDirectory(targetPath);
 
         foreach (var dirPath in Directory.GetDirectories(sourceDirectory, "*", SearchOption.AllDirectories)) {
             var relativePath = Path.GetRelativePath(sourceDirectory, dirPath);
+            
+            // Apply includes first (if specified), then excludes
+            if (includePatterns != null && includePatterns.Count > 0 && !IsIncluded(relativePath, includePatterns)) {
+                GlobalConfig.Logger.Debug("Not included directory: {Directory}", relativePath);
+                continue;
+            }
+            
             if (excludePatterns != null && IsExcluded(relativePath, excludePatterns)) {
                 GlobalConfig.Logger.Debug("Excluding directory: {Directory}", relativePath);
                 continue;
@@ -430,6 +461,13 @@ public static class Program {
 
         foreach (var filePath in Directory.GetFiles(sourceDirectory, "*.*", SearchOption.AllDirectories)) {
             var relativePath = Path.GetRelativePath(sourceDirectory, filePath);
+            
+            // Apply includes first (if specified), then excludes
+            if (includePatterns != null && includePatterns.Count > 0 && !IsIncluded(relativePath, includePatterns)) {
+                GlobalConfig.Logger.Debug("Not included file: {File}", relativePath);
+                continue;
+            }
+            
             if (excludePatterns != null && IsExcluded(relativePath, excludePatterns)) {
                 GlobalConfig.Logger.Debug("Excluding file: {File}", relativePath);
                 continue;
@@ -477,6 +515,49 @@ public static class Program {
         }
 
         return false;
+    }
+
+    private static bool IsIncluded(string relativePath, List<string>? includePatterns) {
+        if (includePatterns == null || includePatterns.Count == 0)
+            return true;
+
+        // Normalize path separators for consistent matching
+        var normalizedPath = relativePath.Replace('\\', '/');
+
+        foreach (var pattern in includePatterns) {
+            // Convert glob pattern to regex
+            var regexPattern = GlobToRegex(pattern);
+            if (Regex.IsMatch(normalizedPath, regexPattern, RegexOptions.IgnoreCase)) return true;
+        }
+
+        return false;
+    }
+
+    private static void ValidateIncludePatterns(string sourceDirectory, List<string> includePatterns) {
+        var hasMatches = false;
+
+        foreach (var filePath in Directory.GetFiles(sourceDirectory, "*.*", SearchOption.AllDirectories)) {
+            var relativePath = Path.GetRelativePath(sourceDirectory, filePath);
+            if (IsIncluded(relativePath, includePatterns)) {
+                hasMatches = true;
+                break;
+            }
+        }
+
+        if (!hasMatches) {
+            foreach (var dirPath in Directory.GetDirectories(sourceDirectory, "*", SearchOption.AllDirectories)) {
+                var relativePath = Path.GetRelativePath(sourceDirectory, dirPath);
+                if (IsIncluded(relativePath, includePatterns)) {
+                    hasMatches = true;
+                    break;
+                }
+            }
+        }
+
+        if (!hasMatches) {
+            var patterns = string.Join(", ", includePatterns.Select(p => $"'{p}'"));
+            throw new ArgumentException($"Include patterns {patterns} do not match any files or directories in '{sourceDirectory}'");
+        }
     }
 
     private static string GlobToRegex(string glob) {

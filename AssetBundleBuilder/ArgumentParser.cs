@@ -103,6 +103,9 @@ public static class ArgumentParser {
                 case "--exclude" when i + 1 < args.Length:
                     config.ExcludePatterns.Add(args[++i]);
                     break;
+                case "--include" when i + 1 < args.Length:
+                    config.IncludePatterns.Add(args[++i]);
+                    break;
             }
 
         if (string.IsNullOrEmpty(config.BundleName)) return null;

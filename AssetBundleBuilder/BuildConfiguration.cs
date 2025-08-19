@@ -17,4 +17,5 @@ public class BuildConfiguration {
     public VerbosityLevel Verbosity { get; set; } = VerbosityLevel.Normal;
     public bool NonInteractive { get; set; } = false;
     public List<string> ExcludePatterns { get; set; } = new List<string>();
+    public List<string> IncludePatterns { get; set; } = new List<string>();
 }

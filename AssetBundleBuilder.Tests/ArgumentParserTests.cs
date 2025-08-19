@@ -173,6 +173,60 @@ public class ArgumentParserTests {
         Assert.Empty(config.ExcludePatterns);
     }
 
+    [Fact]
+    public void Parse_WithSingleInclude_ShouldAddPattern() {
+        var assetPath = GetTestPath("Assets");
+        var outputPath = GetTestPath("Output");
+        var args = new[] { "2022.3.35f1", assetPath, "testmod", outputPath, "--include", "*.png" };
+        var config = ArgumentParser.Parse(args);
+
+        Assert.NotNull(config);
+        Assert.Single(config.IncludePatterns);
+        Assert.Contains("*.png", config.IncludePatterns);
+    }
+
+    [Fact]
+    public void Parse_WithMultipleIncludes_ShouldAddAllPatterns() {
+        var assetPath = GetTestPath("Assets");
+        var outputPath = GetTestPath("Output");
+        var args = new[] { "2022.3.35f1", assetPath, "testmod", outputPath, 
+            "--include", "*.png", "--include", "textures/*", "--include", "*.jpg" };
+        var config = ArgumentParser.Parse(args);
+
+        Assert.NotNull(config);
+        Assert.Equal(3, config.IncludePatterns.Count);
+        Assert.Contains("*.png", config.IncludePatterns);
+        Assert.Contains("textures/*", config.IncludePatterns);
+        Assert.Contains("*.jpg", config.IncludePatterns);
+    }
+
+    [Fact]
+    public void Parse_WithoutInclude_ShouldHaveEmptyList() {
+        var assetPath = GetTestPath("Assets");
+        var outputPath = GetTestPath("Output");
+        var args = new[] { "2022.3.35f1", assetPath, "testmod", outputPath };
+        var config = ArgumentParser.Parse(args);
+
+        Assert.NotNull(config);
+        Assert.Empty(config.IncludePatterns);
+    }
+
+    [Fact]
+    public void Parse_WithBothIncludeAndExclude_ShouldAddAllPatterns() {
+        var assetPath = GetTestPath("Assets");
+        var outputPath = GetTestPath("Output");
+        var args = new[] { "2022.3.35f1", assetPath, "testmod", outputPath, 
+            "--include", "*.png", "--exclude", "*.tmp", "--include", "*.jpg" };
+        var config = ArgumentParser.Parse(args);
+
+        Assert.NotNull(config);
+        Assert.Equal(2, config.IncludePatterns.Count);
+        Assert.Contains("*.png", config.IncludePatterns);
+        Assert.Contains("*.jpg", config.IncludePatterns);
+        Assert.Single(config.ExcludePatterns);
+        Assert.Contains("*.tmp", config.ExcludePatterns);
+    }
+
     private class TempUnityFile : IDisposable {
         public TempUnityFile(string baseFileName) {
             // Use platform-appropriate Unity executable name
