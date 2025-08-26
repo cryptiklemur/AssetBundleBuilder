@@ -21,8 +21,7 @@ public class TempDirectoryIntegrationTests : IDisposable {
 
     [Fact]
     public async Task TempDirectory_CachingBehavior_ShouldReuseExistingDirectory() {
-        var config = new BuildConfiguration
-        {
+        var config = new BuildConfiguration {
             AssetDirectory = @"C:\Test\Assets",
             BundleName = "test.bundle",
             BuildTarget = "windows"
@@ -47,8 +46,7 @@ public class TempDirectoryIntegrationTests : IDisposable {
 
     [Fact]
     public async Task TempDirectory_CleanupEnabled_ShouldRemoveCachedContent() {
-        var config = new BuildConfiguration
-        {
+        var config = new BuildConfiguration {
             AssetDirectory = @"C:\Test\Assets",
             BundleName = "test.bundle",
             BuildTarget = "windows",
@@ -75,8 +73,7 @@ public class TempDirectoryIntegrationTests : IDisposable {
 
     [Fact]
     public void TempDirectory_MultipleConfigurations_ShouldCreateSeparateDirectories() {
-        var configs = new[]
-        {
+        var configs = new[] {
             new BuildConfiguration { AssetDirectory = @"C:\Test1", BundleName = "bundle1", BuildTarget = "windows" },
             new BuildConfiguration { AssetDirectory = @"C:\Test2", BundleName = "bundle2", BuildTarget = "mac" },
             new BuildConfiguration { AssetDirectory = @"C:\Test3", BundleName = "bundle3", BuildTarget = "linux" }
@@ -100,8 +97,7 @@ public class TempDirectoryIntegrationTests : IDisposable {
 
     [Fact]
     public void TempDirectory_HashCollisionResistance_ShouldHandleSimilarInputs() {
-        var configs = new[]
-        {
+        var configs = new[] {
             new BuildConfiguration { AssetDirectory = @"C:\Test", BundleName = "ab", BuildTarget = "windows" },
             new BuildConfiguration { AssetDirectory = @"C:\Test", BundleName = "ba", BuildTarget = "windows" },
             new BuildConfiguration { AssetDirectory = @"C:\Tes", BundleName = "tab", BuildTarget = "windows" }
@@ -122,8 +118,7 @@ public class TempDirectoryIntegrationTests : IDisposable {
     [InlineData(false, false)]
     [InlineData(true, true)]
     public void TempDirectory_CleanupFlags_ShouldBehaveDifferently(bool cleanTemp, bool shouldCleanup) {
-        var config = new BuildConfiguration
-        {
+        var config = new BuildConfiguration {
             CleanTempProject = cleanTemp
         };
 
@@ -135,8 +130,7 @@ public class TempDirectoryIntegrationTests : IDisposable {
     [Fact]
     public void TempDirectory_LongPath_ShouldHandleGracefully() {
         var longAssetDirectory = @"C:\" + new string('a', 200) + @"\Assets";
-        var config = new BuildConfiguration
-        {
+        var config = new BuildConfiguration {
             AssetDirectory = longAssetDirectory,
             BundleName = "test.bundle",
             BuildTarget = "windows"
@@ -156,8 +150,7 @@ public class TempDirectoryIntegrationTests : IDisposable {
 
     [Fact]
     public void TempDirectory_SpecialCharacters_ShouldProduceValidHash() {
-        var config = new BuildConfiguration
-        {
+        var config = new BuildConfiguration {
             AssetDirectory = @"C:\Test Assets & Files",
             BundleName = "special.bundle-name_v1.0",
             BuildTarget = "windows"

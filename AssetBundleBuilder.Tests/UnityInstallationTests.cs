@@ -25,7 +25,7 @@ public class UnityInstallationTests {
     }
 
     [Theory]
-    [InlineData("2022.3.5f1")]
+    [InlineData("2022.3.35f1")]
     [InlineData("2021.3.0f1")]
     [InlineData("2023.1.0b1")]
     public void GraphQLQuery_ShouldContainValidVersionPlaceholder(string version) {
@@ -50,8 +50,7 @@ public class UnityInstallationTests {
 
     [Fact]
     public void UnityHubPaths_ShouldContainCommonInstallLocations() {
-        var expectedPaths = new[]
-        {
+        var expectedPaths = new[] {
             @"C:\Program Files\Unity Hub\Unity Hub.exe",
             @"C:\Program Files (x86)\Unity Hub\Unity Hub.exe"
         };

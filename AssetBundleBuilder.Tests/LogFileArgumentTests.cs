@@ -14,8 +14,7 @@ public class LogFileArgumentTests {
     public void Parse_WithLogFileArgument_ShouldSetLogFile() {
         // Arrange
         var logFilePath = "C:\\Logs\\unity.log";
-        var args = new[]
-        {
+        var args = new[] {
             "2022.3.35f1",
             "C:\\Assets",
             "testbundle",
@@ -39,8 +38,7 @@ public class LogFileArgumentTests {
     [Fact]
     public void Parse_WithRelativeLogFile_ShouldConvertToAbsolute() {
         // Arrange
-        var args = new[]
-        {
+        var args = new[] {
             "2022.3.35f1",
             "C:\\Assets",
             "testbundle",
@@ -63,8 +61,7 @@ public class LogFileArgumentTests {
     [Fact]
     public void Parse_WithoutLogFile_ShouldHaveEmptyLogFile() {
         // Arrange
-        var args = new[]
-        {
+        var args = new[] {
             "2022.3.35f1",
             "C:\\Assets",
             "testbundle",
@@ -83,8 +80,7 @@ public class LogFileArgumentTests {
     public void Parse_WithLogFileAndOtherOptions_ShouldParseAll() {
         // Arrange  
         var logFilePath = "C:\\Logs\\build.log";
-        var args = new[]
-        {
+        var args = new[] {
             "2022.3.35f1",
             "C:\\Assets",
             "testbundle",

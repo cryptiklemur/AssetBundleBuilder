@@ -8,17 +8,17 @@ public class UnityChangesetTests {
     public void ParseUnityApiResponse_WithValidResponse_ReturnsChangeset() {
         // Arrange
         var jsonResponse = """
-        {
-          "results": [
-            {
-              "version": "2022.3.58f1",
-              "shortRevision": "ab3c123d4e5f",
-              "releaseDate": "2023-01-01T00:00:00Z",
-              "stream": "LTS"
-            }
-          ]
-        }
-        """;
+                           {
+                             "results": [
+                               {
+                                 "version": "2022.3.58f1",
+                                 "shortRevision": "ab3c123d4e5f",
+                                 "releaseDate": "2023-01-01T00:00:00Z",
+                                 "stream": "LTS"
+                               }
+                             ]
+                           }
+                           """;
 
         // Act
         var changeset = ExtractChangesetFromJson(jsonResponse);
@@ -31,10 +31,10 @@ public class UnityChangesetTests {
     public void ParseUnityApiResponse_WithEmptyResults_ReturnsNull() {
         // Arrange
         var jsonResponse = """
-        {
-          "results": []
-        }
-        """;
+                           {
+                             "results": []
+                           }
+                           """;
 
         // Act
         var changeset = ExtractChangesetFromJson(jsonResponse);
@@ -47,16 +47,16 @@ public class UnityChangesetTests {
     public void ParseUnityApiResponse_WithMissingShortRevision_ReturnsNull() {
         // Arrange
         var jsonResponse = """
-        {
-          "results": [
-            {
-              "version": "2022.3.58f1",
-              "releaseDate": "2023-01-01T00:00:00Z",
-              "stream": "LTS"
-            }
-          ]
-        }
-        """;
+                           {
+                             "results": [
+                               {
+                                 "version": "2022.3.58f1",
+                                 "releaseDate": "2023-01-01T00:00:00Z",
+                                 "stream": "LTS"
+                               }
+                             ]
+                           }
+                           """;
 
         // Act
         var changeset = ExtractChangesetFromJson(jsonResponse);
@@ -69,17 +69,17 @@ public class UnityChangesetTests {
     public void ParseUnityApiResponse_WithEmptyShortRevision_ReturnsNull() {
         // Arrange
         var jsonResponse = """
-        {
-          "results": [
-            {
-              "version": "2022.3.58f1",
-              "shortRevision": "",
-              "releaseDate": "2023-01-01T00:00:00Z",
-              "stream": "LTS"
-            }
-          ]
-        }
-        """;
+                           {
+                             "results": [
+                               {
+                                 "version": "2022.3.58f1",
+                                 "shortRevision": "",
+                                 "releaseDate": "2023-01-01T00:00:00Z",
+                                 "stream": "LTS"
+                               }
+                             ]
+                           }
+                           """;
 
         // Act
         var changeset = ExtractChangesetFromJson(jsonResponse);
@@ -151,11 +151,10 @@ public class UnityChangesetTests {
                 var firstResult = results[0];
                 if (firstResult.TryGetProperty("shortRevision", out var shortRevision)) {
                     var changesetValue = shortRevision.GetString();
-                    if (!string.IsNullOrEmpty(changesetValue)) {
-                        return changesetValue;
-                    }
+                    if (!string.IsNullOrEmpty(changesetValue)) return changesetValue;
                 }
             }
+
             return null;
         }
         catch {

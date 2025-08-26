@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -7,25 +8,59 @@ namespace CryptikLemur.AssetBundleBuilder;
 
 public static class Program {
     private static int Main(string[] args) {
+        // Handle special commands
+        if (args.Length == 2 && args[0] == "--list-bundles") return ListBundles(args[1]);
+
         if (args.Length < 2) {
             ShowHelp();
             return args.Length == 0 ? 0 : 1;
-
-            ;
         }
 
-        var config = ArgumentParser.Parse(args);
-        if (config == null) {
+        var cliConfig = ArgumentParser.Parse(args);
+        if (cliConfig == null) {
             Console.WriteLine("Error: Invalid arguments provided.");
             ShowHelp();
             return 1;
         }
+
+        // Handle configuration file loading
+        BuildConfiguration config;
+        if (!string.IsNullOrEmpty(cliConfig.ConfigFile)) {
+            try {
+                config = ConfigurationLoader.LoadFromToml(cliConfig.ConfigFile, cliConfig.BundleConfigName, cliConfig);
+            }
+            catch (Exception ex) {
+                Console.WriteLine($"Error loading configuration: {ex.Message}");
+                return 1;
+            }
+        }
+        else config = cliConfig;
 
         // Initialize global config and logging
         GlobalConfig.Config = config;
         GlobalConfig.InitializeLogging(config.Verbosity);
 
         return BuildAssetBundle(config);
+    }
+
+    private static int ListBundles(string configPath) {
+        try {
+            var bundles = ConfigurationLoader.ListBundles(configPath);
+            if (bundles.Count == 0) {
+                Console.WriteLine("No bundles found in configuration file.");
+                return 1;
+            }
+
+            var output = new StringBuilder();
+            output.AppendLine($"Available bundles in {Path.GetFileName(configPath)}:");
+            foreach (var bundle in bundles) output.AppendLine($"  - {bundle}");
+            Console.Write(output.ToString());
+            return 0;
+        }
+        catch (Exception ex) {
+            Console.WriteLine($"Error reading configuration: {ex.Message}");
+            return 1;
+        }
     }
 
     public static int BuildAssetBundle(BuildConfiguration config) {
@@ -139,8 +174,7 @@ public static class Program {
             }
 
             // Create temporary Unity project
-            CreateUnityProject(config.TempProjectPath, config.AssetDirectory, config.BundleName, config.LinkMethod,
-                config.ExcludePatterns, config.IncludePatterns);
+            CreateUnityProject(config.TempProjectPath, config.AssetDirectory, config.BundleName, config.LinkMethod);
 
             // Build Unity command line arguments
             var unityArgsList = new List<string> {
@@ -172,6 +206,18 @@ public static class Program {
                 "-noPlatformSuffix",
                 isAutoTarget ? "true" : "false"
             ]);
+
+            // Add include patterns if any
+            if (config.IncludePatterns.Count > 0) {
+                unityArgsList.Add("-includePatterns");
+                unityArgsList.Add(string.Join(";", config.IncludePatterns));
+            }
+
+            // Add exclude patterns if any
+            if (config.ExcludePatterns.Count > 0) {
+                unityArgsList.Add("-excludePatterns");
+                unityArgsList.Add(string.Join(";", config.ExcludePatterns));
+            }
 
             var unityArgs = unityArgsList.ToArray();
 
@@ -240,58 +286,86 @@ public static class Program {
     }
 
     private static void ShowHelp() {
-        Console.WriteLine("AssetBundleBuilder - Unity Asset Bundle Builder for RimWorld Mods");
-        Console.WriteLine();
-        Console.WriteLine(
-            "Usage: AssetBundleBuilder [unity-path-or-version] <asset-directory> <output-directory> <bundle-name> [options]");
-        Console.WriteLine(
-            "   or: AssetBundleBuilder --unity-version <version> <asset-directory> <output-directory> <bundle-name> [options]");
-        Console.WriteLine();
-        Console.WriteLine("Arguments:");
-        Console.WriteLine("  unity-path-or-version  Either:");
-        Console.WriteLine(
-            "                         - Path to Unity executable (e.g., C:\\Unity\\Editor\\Unity.exe)");
-        Console.WriteLine(
-            "                         - Unity version (e.g., 2022.3.5f1) - will auto-find executable");
-        Console.WriteLine("  asset-directory        Path to the directory containing assets to bundle");
-        Console.WriteLine("  output-directory       Path where the asset bundles will be created");
-        Console.WriteLine("  bundle-name            Name for the asset bundle (e.g., mymod, author.modname)");
-        Console.WriteLine();
-        Console.WriteLine("Options:");
-        Console.WriteLine("  --unity-version <ver>  Specify Unity version explicitly (e.g., 2022.3.5f1)");
-        Console.WriteLine("  --bundle-name <name>   Override bundle name (alternative to positional argument)");
-        Console.WriteLine("  --target <target>      Build target: windows, mac, or linux (default: windows)");
-        Console.WriteLine("  --temp-project <path>  Custom path for temporary Unity project");
-        Console.WriteLine("  --clean-temp           Delete temporary project after build (default: keep for caching)");
-        Console.WriteLine("  --copy                 Copy assets to Unity project (default)");
-        Console.WriteLine("  --symlink              Create symbolic link to assets (faster builds)");
-        Console.WriteLine("  --hardlink             Create hard links to assets (Windows/Unix)");
-        Console.WriteLine("  --junction             Create directory junction to assets (Windows only)");
-        Console.WriteLine("  --logfile <path>       Write Unity log to specified file (default: stdout)");
-        Console.WriteLine("  --ci                   Run in CI mode (no interactive prompts, no Unity auto-install)");
-        Console.WriteLine("  -q, --quiet            Show only errors");
-        Console.WriteLine("  -v, --verbose          Show info, warnings, and errors (default)");
-        Console.WriteLine("  -vv, --debug           Show all messages including debug output");
-        Console.WriteLine("  --non-interactive      Auto-answer yes to prompts, exit on errors");
-        Console.WriteLine("  --exclude <pattern>    Exclude files matching glob pattern (can be used multiple times)");
-        Console.WriteLine("  --include <pattern>    Include only files matching glob pattern (can be used multiple times)");
-        Console.WriteLine();
-        Console.WriteLine("Examples:");
-        Console.WriteLine("  AssetBundleBuilder 2022.3.5f1 \"C:\\MyMod\\Assets\" \"C:\\MyMod\\Output\" \"mymod\"");
-        Console.WriteLine(
-            "  AssetBundleBuilder --unity-version 2022.3.5f1 \"C:\\MyMod\\Assets\" \"C:\\MyMod\\Output\" \"author.modname\"");
-        Console.WriteLine(
-            "  AssetBundleBuilder \"C:\\Unity\\Editor\\Unity.exe\" \"C:\\MyMod\\Assets\" \"C:\\MyMod\\Output\" \"mymod\"");
-        Console.WriteLine(
-            "  AssetBundleBuilder 2022.3.5f1 ./assets ./output mymod --exclude \"*.tmp\" --exclude \"backup/*\"");
-        Console.WriteLine(
-            "  AssetBundleBuilder 2022.3.5f1 ./assets ./output mymod --include \"*.png\" --include \"*.jpg\"");
-        Console.WriteLine(
-            "  AssetBundleBuilder 2022.3.5f1 ./assets ./output mymod --include \"Textures/*\" --exclude \"*.backup\"");
+        const string help = """
+                            AssetBundleBuilder - Unity Asset Bundle Builder for RimWorld Mods
+
+                            Usage: AssetBundleBuilder [unity-path-or-version] <asset-directory> <output-directory> <bundle-name> [options]
+                               or: AssetBundleBuilder --unity-version <version> <asset-directory> <output-directory> <bundle-name> [options]
+
+                            Arguments:
+                              unity-path-or-version  Either:
+                                                     - Path to Unity executable (e.g., C:\Unity\Editor\Unity.exe)
+                                                     - Unity version (e.g., 2022.3.35f1) - will auto-find executable
+                              asset-directory        Path to the directory containing assets to bundle
+                              output-directory       Path where the asset bundles will be created
+                              bundle-name            Name for the asset bundle (e.g., mymod, author.modname)
+
+                            Options:
+                              --unity-version <ver>  Specify Unity version explicitly (e.g., 2022.3.35f1)
+                              --bundle-name <name>   Override bundle name (alternative to positional argument)
+                              --target <target>      Build target: windows, mac, or linux (default: windows)
+                              --temp-project <path>  Custom path for temporary Unity project
+                              --clean-temp           Delete temporary project after build (default: keep for caching)
+                              --copy                 Copy assets to Unity project (default)
+                              --symlink              Create symbolic link to assets (faster builds)
+                              --hardlink             Create hard links to assets (Windows/Unix)
+                              --junction             Create directory junction to assets (Windows only)
+                              --logfile <path>       Write Unity log to specified file (default: stdout)
+                              --ci                   Run in CI mode (no interactive prompts, no Unity auto-install)
+                              -q, --quiet            Show only errors
+                              -v, --verbose          Show info, warnings, and errors (default)
+                              -vv, --debug           Show all messages including debug output
+                              --non-interactive      Auto-answer yes to prompts, exit on errors
+                              --exclude <pattern>    Exclude files matching glob pattern (can be used multiple times)
+                              --include <pattern>    Include only files matching glob pattern (can be used multiple times)
+                              --config <path>        Use TOML configuration file
+                              --bundle-config <name> Select specific bundle from config file
+                              --list-bundles <path>  List available bundles in config file
+                              
+                            Auto-detection:
+                              .assetbundler.toml     Automatically detected if present in current directory
+
+                            Examples:
+                              # CLI usage:
+                              AssetBundleBuilder 2022.3.35f1 "C:\MyMod\Assets" "C:\MyMod\Output" "mymod"
+                              AssetBundleBuilder 2022.3.35f1 ./assets ./output mymod --exclude "*.tmp"
+                              AssetBundleBuilder 2022.3.35f1 ./assets ./output mymod --include "*.png" --include "*.jpg"
+
+                              # Config file usage:
+                              AssetBundleBuilder --config mymod.toml
+                              AssetBundleBuilder --config mymod.toml --bundle-config sounds
+                              AssetBundleBuilder --list-bundles mymod.toml
+
+                              # Auto-detection (.assetbundler.toml in current directory):
+                              AssetBundleBuilder --bundle-config textures
+                              AssetBundleBuilder -vv --bundle-config sounds
+                              AssetBundleBuilder --target mac --verbose
+
+                              # Config file can override CLI args:
+                              AssetBundleBuilder --config mymod.toml --target mac --verbose
+
+                            Example config file (mymod.toml):
+                              [global]
+                              unity_version = "2022.3.35f1"
+                              build_target = "windows"
+                              exclude_patterns = ["*.tmp", "backup/*"]
+
+                              [bundles.textures]
+                              asset_directory = "Assets/Textures"
+                              bundle_name = "author.textures"
+                              include_patterns = ["*.png", "*.jpg"]
+
+                              [bundles.sounds]
+                              asset_directory = "Assets/Sounds"
+                              bundle_name = "author.sounds"
+                              include_patterns = ["*.wav", "*.ogg"]
+                            """;
+
+        Console.WriteLine(help);
     }
 
     private static void CreateUnityProject(string projectPath, string assetDirectory, string bundleName,
-        string linkMethod, List<string> excludePatterns, List<string> includePatterns) {
+        string linkMethod) {
         GlobalConfig.Logger.Information("Creating temporary Unity project at: {ProjectPath}", projectPath);
 
         // Create project structure
@@ -312,7 +386,7 @@ public static class Program {
 
         // Link assets from source directory to Unity project
         var targetPath = Path.Combine(projectPath, "Assets", "Data", bundleName);
-        LinkAssets(assetDirectory, targetPath, linkMethod, excludePatterns, includePatterns);
+        LinkAssets(assetDirectory, targetPath, linkMethod);
 
         GlobalConfig.Logger.Information("Unity project created successfully");
     }
@@ -340,8 +414,7 @@ public static class Program {
 
     // Unity scripts are now copied from UnityScripts/ directory instead of being embedded
 
-    private static void LinkAssets(string sourceDirectory, string targetPath, string linkMethod,
-        List<string> excludePatterns, List<string> includePatterns) {
+    private static void LinkAssets(string sourceDirectory, string targetPath, string linkMethod) {
         GlobalConfig.Logger.Information("Linking assets using method: {LinkMethod}", linkMethod);
         GlobalConfig.Logger.Debug("Source: {SourceDirectory}", sourceDirectory);
         GlobalConfig.Logger.Debug("Target: {TargetPath}", targetPath);
@@ -353,14 +426,9 @@ public static class Program {
         var parentDir = Path.GetDirectoryName(targetPath)!;
         if (!Directory.Exists(parentDir)) Directory.CreateDirectory(parentDir);
 
-        // Validate include patterns match files before proceeding
-        if (includePatterns.Count > 0) {
-            ValidateIncludePatterns(sourceDirectory, includePatterns);
-        }
-
         switch (linkMethod.ToLower()) {
             case "copy":
-                CopyDirectory(sourceDirectory, targetPath, excludePatterns, includePatterns);
+                CopyDirectory(sourceDirectory, targetPath);
                 GlobalConfig.Logger.Information("Assets copied successfully");
                 break;
             case "symlink":
@@ -368,7 +436,7 @@ public static class Program {
                 GlobalConfig.Logger.Information("Symbolic link created successfully");
                 break;
             case "hardlink":
-                CreateHardLink(sourceDirectory, targetPath, excludePatterns, includePatterns);
+                CreateHardLink(sourceDirectory, targetPath);
                 GlobalConfig.Logger.Information("Hard links created successfully");
                 break;
             case "junction":
@@ -381,40 +449,14 @@ public static class Program {
     }
 
     // CopyDirectory helper method
-    private static void CopyDirectory(string sourceDir, string destDir, List<string>? excludePatterns = null, List<string>? includePatterns = null) {
+    private static void CopyDirectory(string sourceDir, string destDir) {
         Directory.CreateDirectory(destDir);
 
         foreach (var dirPath in Directory.GetDirectories(sourceDir, "*", SearchOption.AllDirectories)) {
-            var relativePath = Path.GetRelativePath(sourceDir, dirPath);
-            
-            // Apply includes first (if specified), then excludes
-            if (includePatterns != null && includePatterns.Count > 0 && !IsIncluded(relativePath, includePatterns)) {
-                GlobalConfig.Logger.Debug("Not included directory: {Directory}", relativePath);
-                continue;
-            }
-            
-            if (excludePatterns != null && IsExcluded(relativePath, excludePatterns)) {
-                GlobalConfig.Logger.Debug("Excluding directory: {Directory}", relativePath);
-                continue;
-            }
-
             Directory.CreateDirectory(dirPath.Replace(sourceDir, destDir));
         }
 
         foreach (var filePath in Directory.GetFiles(sourceDir, "*.*", SearchOption.AllDirectories)) {
-            var relativePath = Path.GetRelativePath(sourceDir, filePath);
-            
-            // Apply includes first (if specified), then excludes
-            if (includePatterns != null && includePatterns.Count > 0 && !IsIncluded(relativePath, includePatterns)) {
-                GlobalConfig.Logger.Debug("Not included file: {File}", relativePath);
-                continue;
-            }
-            
-            if (excludePatterns != null && IsExcluded(relativePath, excludePatterns)) {
-                GlobalConfig.Logger.Debug("Excluding file: {File}", relativePath);
-                continue;
-            }
-
             var destPath = filePath.Replace(sourceDir, destDir);
             var destDirPath = Path.GetDirectoryName(destPath);
             if (destDirPath != null && !Directory.Exists(destDirPath))
@@ -436,43 +478,18 @@ public static class Program {
         }
     }
 
-    private static void CreateHardLink(string sourceDirectory, string targetPath,
-        List<string>? excludePatterns = null, List<string>? includePatterns = null) {
+    private static void CreateHardLink(string sourceDirectory, string targetPath) {
         // Hard links work differently - we need to recursively create hard links for files
         Directory.CreateDirectory(targetPath);
 
         foreach (var dirPath in Directory.GetDirectories(sourceDirectory, "*", SearchOption.AllDirectories)) {
             var relativePath = Path.GetRelativePath(sourceDirectory, dirPath);
-            
-            // Apply includes first (if specified), then excludes
-            if (includePatterns != null && includePatterns.Count > 0 && !IsIncluded(relativePath, includePatterns)) {
-                GlobalConfig.Logger.Debug("Not included directory: {Directory}", relativePath);
-                continue;
-            }
-            
-            if (excludePatterns != null && IsExcluded(relativePath, excludePatterns)) {
-                GlobalConfig.Logger.Debug("Excluding directory: {Directory}", relativePath);
-                continue;
-            }
-
             var targetDirPath = Path.Combine(targetPath, relativePath);
             Directory.CreateDirectory(targetDirPath);
         }
 
         foreach (var filePath in Directory.GetFiles(sourceDirectory, "*.*", SearchOption.AllDirectories)) {
             var relativePath = Path.GetRelativePath(sourceDirectory, filePath);
-            
-            // Apply includes first (if specified), then excludes
-            if (includePatterns != null && includePatterns.Count > 0 && !IsIncluded(relativePath, includePatterns)) {
-                GlobalConfig.Logger.Debug("Not included file: {File}", relativePath);
-                continue;
-            }
-            
-            if (excludePatterns != null && IsExcluded(relativePath, excludePatterns)) {
-                GlobalConfig.Logger.Debug("Excluding file: {File}", relativePath);
-                continue;
-            }
-
             var targetFilePath = Path.Combine(targetPath, relativePath);
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
@@ -501,98 +518,6 @@ public static class Program {
             throw new InvalidOperationException($"Failed to create junction. Exit code: {result}");
     }
 
-    private static bool IsExcluded(string relativePath, List<string>? excludePatterns) {
-        if (excludePatterns == null || excludePatterns.Count == 0)
-            return false;
-
-        // Normalize path separators for consistent matching
-        var normalizedPath = relativePath.Replace('\\', '/');
-
-        foreach (var pattern in excludePatterns) {
-            // Convert glob pattern to regex
-            var regexPattern = GlobToRegex(pattern);
-            if (Regex.IsMatch(normalizedPath, regexPattern, RegexOptions.IgnoreCase)) return true;
-        }
-
-        return false;
-    }
-
-    private static bool IsIncluded(string relativePath, List<string>? includePatterns) {
-        if (includePatterns == null || includePatterns.Count == 0)
-            return true;
-
-        // Normalize path separators for consistent matching
-        var normalizedPath = relativePath.Replace('\\', '/');
-
-        foreach (var pattern in includePatterns) {
-            // Convert glob pattern to regex
-            var regexPattern = GlobToRegex(pattern);
-            if (Regex.IsMatch(normalizedPath, regexPattern, RegexOptions.IgnoreCase)) return true;
-        }
-
-        return false;
-    }
-
-    private static void ValidateIncludePatterns(string sourceDirectory, List<string> includePatterns) {
-        var hasMatches = false;
-
-        foreach (var filePath in Directory.GetFiles(sourceDirectory, "*.*", SearchOption.AllDirectories)) {
-            var relativePath = Path.GetRelativePath(sourceDirectory, filePath);
-            if (IsIncluded(relativePath, includePatterns)) {
-                hasMatches = true;
-                break;
-            }
-        }
-
-        if (!hasMatches) {
-            foreach (var dirPath in Directory.GetDirectories(sourceDirectory, "*", SearchOption.AllDirectories)) {
-                var relativePath = Path.GetRelativePath(sourceDirectory, dirPath);
-                if (IsIncluded(relativePath, includePatterns)) {
-                    hasMatches = true;
-                    break;
-                }
-            }
-        }
-
-        if (!hasMatches) {
-            var patterns = string.Join(", ", includePatterns.Select(p => $"'{p}'"));
-            throw new ArgumentException($"Include patterns {patterns} do not match any files or directories in '{sourceDirectory}'");
-        }
-    }
-
-    private static string GlobToRegex(string glob) {
-        // Normalize path separators
-        glob = glob.Replace('\\', '/');
-
-        // Handle special case of **/ - matches any number of directories (including zero)
-        if (glob.StartsWith("**/")) {
-            var remainder = glob.Substring(3);
-            var escapedRemainder = Regex.Escape(remainder)
-                .Replace("\\*", "[^/]*") // * matches any character except /
-                .Replace("\\?", "."); // ? matches single character
-
-            // **/ allows the file to be at root or any depth
-            return "^(.*/)?" + escapedRemainder + "$";
-        }
-
-        // Escape regex special characters except * and ?
-        var escaped = Regex.Escape(glob);
-
-        // Handle ** before * to avoid incorrect replacements
-        escaped = escaped.Replace("\\*\\*", ".*"); // ** matches anything
-        escaped = escaped.Replace("\\*", "[^/]*"); // * matches any character except /
-        escaped = escaped.Replace("\\?", "."); // ? matches single character
-
-        // If pattern doesn't start with /, it can match at any depth
-        if (!glob.StartsWith("/"))
-            escaped = "(^|.*/)" + escaped;
-
-        // If pattern ends with /, match directories
-        if (glob.EndsWith("/"))
-            escaped = escaped + ".*";
-
-        return "^" + escaped + "$";
-    }
 
     private static int RunCommand(string command, string arguments) {
         ProcessStartInfo processInfo;

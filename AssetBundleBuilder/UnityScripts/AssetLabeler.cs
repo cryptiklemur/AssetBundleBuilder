@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 
@@ -29,10 +30,14 @@ public class AssetLabeler
     }
 
     /// <summary>
-    ///     Labels all assets  with a single common asset bundle name.
+    ///     Labels all assets with a single common asset bundle name, applying include/exclude patterns.
     /// </summary>
-    /// <returns>The number of textures labeled.</returns>
-    public static AssetBundleBuild LabelAllAssetsWithCommonName(string assetFileName)
+    /// <param name="assetFileName">The asset bundle name</param>
+    /// <param name="includePatterns">Patterns to include (if empty, includes all)</param>
+    /// <param name="excludePatterns">Patterns to exclude</param>
+    /// <returns>The asset bundle build info.</returns>
+    public static AssetBundleBuild LabelAllAssetsWithCommonName(string assetFileName, 
+        List<string> includePatterns = null, List<string> excludePatterns = null)
     {
         var sourceDirectory = Path.Combine(assetsFolder, assetFileName);
         Debug.Log($"Finding all assets in {sourceDirectory}");
@@ -54,6 +59,18 @@ public class AssetLabeler
         foreach (var filePath in filePaths)
         {
             var relativePath = Path.GetRelativePath(sourceDirectory, filePath);
+            
+            // Apply includes first (if specified), then excludes
+            if (!IsIncluded(relativePath, includePatterns)) {
+                Debug.Log($"Not included file: {relativePath}");
+                continue;
+            }
+            
+            if (IsExcluded(relativePath, excludePatterns)) {
+                Debug.Log($"Excluding file: {relativePath}");
+                continue;
+            }
+            
             var assetPath = Path.Combine("Assets", "Data", assetFileName, relativePath).Replace('\\', '/');
            
             // Skip if meta file already exists
@@ -148,5 +165,71 @@ public class AssetLabeler
 
         Debug.Log($"Labeling complete: {assetsLabeled} assets labeled with \"{assetFileName}\".");
         return new AssetBundleBuild { assetBundleName = assetFileName, assetNames = files.ToArray() };
+    }
+
+    private static bool IsExcluded(string relativePath, List<string> excludePatterns) {
+        if (excludePatterns == null || excludePatterns.Count == 0)
+            return false;
+
+        // Normalize path separators for consistent matching
+        var normalizedPath = relativePath.Replace('\\', '/');
+
+        foreach (var pattern in excludePatterns) {
+            // Convert glob pattern to regex
+            var regexPattern = GlobToRegex(pattern);
+            if (Regex.IsMatch(normalizedPath, regexPattern, RegexOptions.IgnoreCase)) return true;
+        }
+
+        return false;
+    }
+
+    private static bool IsIncluded(string relativePath, List<string> includePatterns) {
+        if (includePatterns == null || includePatterns.Count == 0)
+            return true;
+
+        // Normalize path separators for consistent matching
+        var normalizedPath = relativePath.Replace('\\', '/');
+
+        foreach (var pattern in includePatterns) {
+            // Convert glob pattern to regex
+            var regexPattern = GlobToRegex(pattern);
+            if (Regex.IsMatch(normalizedPath, regexPattern, RegexOptions.IgnoreCase)) return true;
+        }
+
+        return false;
+    }
+
+    private static string GlobToRegex(string glob) {
+        // Normalize path separators
+        glob = glob.Replace('\\', '/');
+
+        // Handle special case of **/ - matches any number of directories (including zero)
+        if (glob.StartsWith("**/")) {
+            var remainder = glob.Substring(3);
+            var escapedRemainder = Regex.Escape(remainder)
+                .Replace("\\*", "[^/]*") // * matches any character except /
+                .Replace("\\?", "."); // ? matches single character
+
+            // **/ allows the file to be at root or any depth
+            return "^(.*/)?" + escapedRemainder + "$";
+        }
+
+        // Escape regex special characters except * and ?
+        var escaped = Regex.Escape(glob);
+
+        // Handle ** before * to avoid incorrect replacements
+        escaped = escaped.Replace("\\*\\*", ".*"); // ** matches anything
+        escaped = escaped.Replace("\\*", "[^/]*"); // * matches any character except /
+        escaped = escaped.Replace("\\?", "."); // ? matches single character
+
+        // If pattern doesn't start with /, it can match at any depth
+        if (!glob.StartsWith("/"))
+            escaped = "(^|.*/)" + escaped;
+
+        // If pattern ends with /, match directories
+        if (glob.EndsWith("/"))
+            escaped = escaped + ".*";
+
+        return "^" + escaped + "$";
     }
 }

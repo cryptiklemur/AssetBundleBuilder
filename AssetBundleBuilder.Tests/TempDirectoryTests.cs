@@ -21,8 +21,7 @@ public class TempDirectoryTests : IDisposable {
 
     [Fact]
     public void TempDirectory_ShouldBeCreatedFromHash() {
-        var config = new BuildConfiguration
-        {
+        var config = new BuildConfiguration {
             AssetDirectory = @"C:\Test\Assets",
             BundleName = "test.bundle",
             BuildTarget = "windows"
@@ -40,15 +39,13 @@ public class TempDirectoryTests : IDisposable {
 
     [Fact]
     public void TempDirectory_SameInputs_ShouldProduceSamePath() {
-        var config1 = new BuildConfiguration
-        {
+        var config1 = new BuildConfiguration {
             AssetDirectory = @"C:\Test\Assets",
             BundleName = "test.bundle",
             BuildTarget = "windows"
         };
 
-        var config2 = new BuildConfiguration
-        {
+        var config2 = new BuildConfiguration {
             AssetDirectory = @"C:\Test\Assets",
             BundleName = "test.bundle",
             BuildTarget = "windows"
@@ -62,15 +59,13 @@ public class TempDirectoryTests : IDisposable {
 
     [Fact]
     public void TempDirectory_DifferentInputs_ShouldProduceDifferentPaths() {
-        var config1 = new BuildConfiguration
-        {
+        var config1 = new BuildConfiguration {
             AssetDirectory = @"C:\Test\Assets",
             BundleName = "test.bundle",
             BuildTarget = "windows"
         };
 
-        var config2 = new BuildConfiguration
-        {
+        var config2 = new BuildConfiguration {
             AssetDirectory = @"C:\Test\Assets",
             BundleName = "different.bundle",
             BuildTarget = "windows"
@@ -90,8 +85,7 @@ public class TempDirectoryTests : IDisposable {
     [InlineData(@"C:\Different\Assets", "test.bundle", "windows")]
     public void TempDirectory_VariousInputs_ShouldCreateValidPaths(string assetDir, string bundleName,
         string buildTarget) {
-        var config = new BuildConfiguration
-        {
+        var config = new BuildConfiguration {
             AssetDirectory = assetDir,
             BundleName = bundleName,
             BuildTarget = buildTarget
@@ -106,8 +100,7 @@ public class TempDirectoryTests : IDisposable {
 
     [Fact]
     public void TempDirectory_PreExistingPath_ShouldNotOverride() {
-        var config = new BuildConfiguration
-        {
+        var config = new BuildConfiguration {
             AssetDirectory = @"C:\Test\Assets",
             BundleName = "test.bundle",
             BuildTarget = "windows",
@@ -128,8 +121,7 @@ public class TempDirectoryTests : IDisposable {
         await File.WriteAllTextAsync(testFile, "test content");
         _tempDirectoriesToCleanup.Add(tempDir);
 
-        var config = new BuildConfiguration
-        {
+        var config = new BuildConfiguration {
             TempProjectPath = tempDir,
             CleanTempProject = true
         };
@@ -144,8 +136,7 @@ public class TempDirectoryTests : IDisposable {
     public void CleanTempProject_NonExistentDirectory_ShouldReturnTrue() {
         var nonExistentDir = Path.Combine(Path.GetTempPath(), $"AssetBundleBuilder_NonExistent_{Guid.NewGuid():N}");
 
-        var config = new BuildConfiguration
-        {
+        var config = new BuildConfiguration {
             TempProjectPath = nonExistentDir,
             CleanTempProject = true
         };
@@ -164,8 +155,7 @@ public class TempDirectoryTests : IDisposable {
         File.SetAttributes(readOnlyFile, FileAttributes.ReadOnly);
         _tempDirectoriesToCleanup.Add(tempDir);
 
-        var config = new BuildConfiguration
-        {
+        var config = new BuildConfiguration {
             TempProjectPath = tempDir,
             CleanTempProject = true
         };
@@ -178,8 +168,7 @@ public class TempDirectoryTests : IDisposable {
 
     [Fact]
     public void DefaultBehavior_ShouldNotCleanupTempProject() {
-        var config = new BuildConfiguration
-        {
+        var config = new BuildConfiguration {
             CleanTempProject = false
         };
 
@@ -190,8 +179,7 @@ public class TempDirectoryTests : IDisposable {
 
     [Fact]
     public void CleanTempFlag_ShouldCleanupTempProject() {
-        var config = new BuildConfiguration
-        {
+        var config = new BuildConfiguration {
             CleanTempProject = true
         };
 
@@ -202,8 +190,7 @@ public class TempDirectoryTests : IDisposable {
 
     [Fact]
     public void TempDirectoryHash_ShouldBe8Characters() {
-        var config = new BuildConfiguration
-        {
+        var config = new BuildConfiguration {
             AssetDirectory = @"C:\Test\Assets",
             BundleName = "test.bundle",
             BuildTarget = "windows"

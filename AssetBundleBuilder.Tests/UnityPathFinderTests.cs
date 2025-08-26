@@ -5,7 +5,7 @@ namespace CryptikLemur.AssetBundleBuilder.Tests;
 
 public class UnityPathFinderTests {
     [Theory]
-    [InlineData("2022.3.5f1")]
+    [InlineData("2022.3.35f1")]
     [InlineData("2023.2.0f1")]
     [InlineData("2021.3.16f1")]
     public void FindUnityExecutable_WithValidVersion_ShouldReturnPath(string version) {
@@ -37,10 +37,10 @@ public class UnityPathFinderTests {
     }
 
     [Theory]
-    [InlineData("C:\\Unity\\2022.3.5f1", "C:\\Unity\\2022.3.5f1\\Editor\\Unity.exe")]
-    [InlineData("/Applications/Unity/Hub/Editor/2022.3.5f1",
-        "/Applications/Unity/Hub/Editor/2022.3.5f1/Unity.app/Contents/MacOS/Unity")]
-    [InlineData("/opt/unity/editor/2022.3.5f1", "/opt/unity/editor/2022.3.5f1/Editor/Unity")]
+    [InlineData("C:\\Unity\\2022.3.35f1", "C:\\Unity\\2022.3.35f1\\Editor\\Unity.exe")]
+    [InlineData("/Applications/Unity/Hub/Editor/2022.3.35f1",
+        "/Applications/Unity/Hub/Editor/2022.3.35f1/Unity.app/Contents/MacOS/Unity")]
+    [InlineData("/opt/unity/editor/2022.3.35f1", "/opt/unity/editor/2022.3.35f1/Editor/Unity")]
     public void GetUnityExecutablePath_WithValidPath_ShouldReturnExpectedExecutable(string installPath,
         string expectedPath) {
         // Skip test if not on the correct platform

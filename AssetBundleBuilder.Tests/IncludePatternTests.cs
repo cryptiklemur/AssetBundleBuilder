@@ -1,14 +1,11 @@
-using System.Reflection;
 using Xunit;
 
 namespace CryptikLemur.AssetBundleBuilder.Tests;
 
 public class IncludePatternTests {
-    // Use reflection to test private methods
+    // Use PatternMatcher for testing
     private static bool IsIncluded(string relativePath, List<string> includePatterns) {
-        var type = typeof(Program);
-        var method = type.GetMethod("IsIncluded", BindingFlags.NonPublic | BindingFlags.Static);
-        return (bool)method!.Invoke(null, new object[] { relativePath, includePatterns })!;
+        return PatternMatcher.IsIncluded(relativePath, includePatterns);
     }
 
     [Theory]
@@ -31,7 +28,7 @@ public class IncludePatternTests {
     [Fact]
     public void IsIncluded_WithMultiplePatterns_ShouldMatchAny() {
         var patterns = new List<string> { "*.png", "*.jpg", "sounds/*" };
-        
+
         Assert.True(IsIncluded("image.png", patterns));
         Assert.True(IsIncluded("photo.jpg", patterns));
         Assert.True(IsIncluded("sounds/music.wav", patterns));
@@ -54,11 +51,11 @@ public class IncludePatternTests {
     [InlineData(@"C:\Users\test\file.png", "C:/Users/test/file.png")]
     public void IsIncluded_WithWindowsPaths_ShouldNormalize(string windowsPath, string normalizedPath) {
         var patterns = new List<string> { "*.png" };
-        
+
         // Both should match because paths are normalized
         var windowsResult = IsIncluded(windowsPath, patterns);
         var normalizedResult = IsIncluded(normalizedPath, patterns);
-        
+
         Assert.True(windowsResult);
         Assert.True(normalizedResult);
         Assert.Equal(windowsResult, normalizedResult);
@@ -67,7 +64,7 @@ public class IncludePatternTests {
     [Fact]
     public void IsIncluded_CaseInsensitive_ShouldMatch() {
         var patterns = new List<string> { "*.PNG" };
-        
+
         Assert.True(IsIncluded("file.png", patterns));
         Assert.True(IsIncluded("FILE.PNG", patterns));
         Assert.True(IsIncluded("File.Png", patterns));
@@ -76,7 +73,7 @@ public class IncludePatternTests {
     [Fact]
     public void IsIncluded_DirectoryPatterns_ShouldWork() {
         var patterns = new List<string> { "Assets/Sounds", "Assets/Textures" };
-        
+
         Assert.True(IsIncluded("Assets/Sounds", patterns));
         Assert.True(IsIncluded("Assets/Textures", patterns));
         Assert.False(IsIncluded("Assets/Scripts", patterns));
@@ -86,7 +83,7 @@ public class IncludePatternTests {
     [Fact]
     public void IsIncluded_DirectoryWithWildcard_ShouldMatchContents() {
         var patterns = new List<string> { "Assets/Sounds/*" };
-        
+
         Assert.True(IsIncluded("Assets/Sounds/music.wav", patterns));
         Assert.True(IsIncluded("Assets/Sounds/effect.mp3", patterns));
         Assert.False(IsIncluded("Assets/Sounds", patterns)); // Directory itself doesn't match
@@ -96,7 +93,7 @@ public class IncludePatternTests {
     [Fact]
     public void IsIncluded_DeepDirectoryWildcard_ShouldMatchNested() {
         var patterns = new List<string> { "Assets/Sounds/**" };
-        
+
         Assert.True(IsIncluded("Assets/Sounds/music/track1.wav", patterns));
         Assert.True(IsIncluded("Assets/Sounds/effects/ambient/wind.mp3", patterns));
         Assert.True(IsIncluded("Assets/Sounds/file.wav", patterns));

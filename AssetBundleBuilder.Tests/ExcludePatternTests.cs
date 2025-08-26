@@ -1,21 +1,15 @@
-using System.Reflection;
-using System.Text.RegularExpressions;
 using Xunit;
 
 namespace CryptikLemur.AssetBundleBuilder.Tests;
 
 public class ExcludePatternTests {
-    // Use reflection to test private methods
+    // Use PatternMatcher for testing
     private static bool IsExcluded(string relativePath, List<string> excludePatterns) {
-        var type = typeof(Program);
-        var method = type.GetMethod("IsExcluded", BindingFlags.NonPublic | BindingFlags.Static);
-        return (bool)method!.Invoke(null, new object[] { relativePath, excludePatterns })!;
+        return PatternMatcher.IsExcluded(relativePath, excludePatterns);
     }
 
     private static string GlobToRegex(string glob) {
-        var type = typeof(Program);
-        var method = type.GetMethod("GlobToRegex", BindingFlags.NonPublic | BindingFlags.Static);
-        return (string)method!.Invoke(null, new object[] { glob })!;
+        return PatternMatcher.GlobToRegex(glob);
     }
 
     [Theory]
@@ -39,7 +33,7 @@ public class ExcludePatternTests {
     [Fact]
     public void IsExcluded_WithMultiplePatterns_ShouldMatchAny() {
         var patterns = new List<string> { "*.tmp", "*.bak", "backup/*" };
-        
+
         Assert.True(IsExcluded("file.tmp", patterns));
         Assert.True(IsExcluded("file.bak", patterns));
         Assert.True(IsExcluded("backup/anything.txt", patterns));
@@ -73,11 +67,11 @@ public class ExcludePatternTests {
     [InlineData(@"C:\Users\test\file.tmp", "C:/Users/test/file.tmp")]
     public void IsExcluded_WithWindowsPaths_ShouldNormalize(string windowsPath, string normalizedPath) {
         var patterns = new List<string> { "*.tmp" };
-        
+
         // Both should match because paths are normalized
         var windowsResult = IsExcluded(windowsPath, patterns);
         var normalizedResult = IsExcluded(normalizedPath, patterns);
-        
+
         Assert.True(windowsResult);
         Assert.True(normalizedResult);
         Assert.Equal(windowsResult, normalizedResult);
@@ -86,7 +80,7 @@ public class ExcludePatternTests {
     [Fact]
     public void IsExcluded_CaseInsensitive_ShouldMatch() {
         var patterns = new List<string> { "*.TMP" };
-        
+
         Assert.True(IsExcluded("file.tmp", patterns));
         Assert.True(IsExcluded("FILE.TMP", patterns));
         Assert.True(IsExcluded("File.Tmp", patterns));

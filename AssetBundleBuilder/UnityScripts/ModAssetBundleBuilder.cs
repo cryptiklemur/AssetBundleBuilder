@@ -26,6 +26,8 @@ public class ModAssetBundleBuilder
         var assetDirectory = "";
         var buildTarget = "all";
         var noPlatformSuffix = false;
+        var includePatterns = new List<string>();
+        var excludePatterns = new List<string>();
         for (int i = 0; i < arguments.Length; i++)
         {
             var arg = arguments[i];
@@ -77,6 +79,20 @@ public class ModAssetBundleBuilder
                 Debug.Log($"No platform suffix: {noPlatformSuffix}");
                 i++; // Skip the next argument since we've consumed it
             }
+            else if (arg == "-includePatterns" && i + 1 < arguments.Length)
+            {
+                var patterns = arguments[i + 1].Split(';');
+                includePatterns.AddRange(patterns);
+                Debug.Log($"Include patterns: {string.Join(", ", patterns)}");
+                i++; // Skip the next argument since we've consumed it
+            }
+            else if (arg == "-excludePatterns" && i + 1 < arguments.Length)
+            {
+                var patterns = arguments[i + 1].Split(';');
+                excludePatterns.AddRange(patterns);
+                Debug.Log($"Exclude patterns: {string.Join(", ", patterns)}");
+                i++; // Skip the next argument since we've consumed it
+            }
         }
 
         if (string.IsNullOrEmpty(bundleName))
@@ -95,12 +111,13 @@ public class ModAssetBundleBuilder
         }
 
         // Ensure textures are labeled correctly before proceeding.
-        var bundle = AssetLabeler.LabelAllAssetsWithCommonName(assetBundleName);
+        var bundle = AssetLabeler.LabelAllAssetsWithCommonName(assetBundleName, includePatterns, excludePatterns);
         if (bundle.assetNames == null || bundle.assetNames.Count() == 0) {
             throw new Exception("No assets were labeled; aborting asset bundle build.");
         }
 
         // Build to a local AssetBundles directory in the temp project for caching
+        
         var tempOutputLocation = Path.Combine(Directory.GetCurrentDirectory(), "AssetBundles");
         
         // Final output location where we'll copy the bundles
@@ -140,6 +157,7 @@ public class ModAssetBundleBuilder
         
         if (manifest != null)
         {
+            
             foreach (var bn in manifest.GetAllAssetBundles())
             {
                 string projectRelativePath = tempOutputLocation + "/" + bn;
@@ -158,9 +176,19 @@ public class ModAssetBundleBuilder
         // Generate the new naming format: resource_<bundlename>_<target> or resource_<bundlename> if no platform suffix
         // Convert periods to underscores in bundle name
         var normalizedBundleName = assetBundleName.Replace(".", "_");
+        
+        // Map build target to short suffix
+        string platformSuffix = buildTarget switch
+        {
+            "windows" => "win",
+            "mac" => "mac",
+            "linux" => "linux",
+            _ => buildTarget
+        };
+        
         var finalFileName = noPlatformSuffix 
             ? $"resource_{normalizedBundleName}"
-            : $"resource_{normalizedBundleName}_{buildTarget}";
+            : $"resource_{normalizedBundleName}_{platformSuffix}";
         
         Debug.Log($"Bundle naming: '{assetBundleName}' -> '{finalFileName}' (no platform suffix: {noPlatformSuffix})");
         

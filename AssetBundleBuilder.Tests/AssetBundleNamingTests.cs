@@ -39,17 +39,17 @@ public class AssetBundleNamingTests : IDisposable {
     }
 
     [Theory]
-    [InlineData("author.modname", "windows", "resource_author_modname_windows")]
+    [InlineData("author.modname", "windows", "resource_author_modname_win")]
     [InlineData("mymod", "linux", "resource_mymod_linux")]
     [InlineData("test.bundle", "mac", "resource_test_bundle_mac")]
-    [InlineData("cryptiklemur.assetbuilder", "windows", "resource_cryptiklemur_assetbuilder_windows")]
+    [InlineData("cryptiklemur.assetbuilder", "windows", "resource_cryptiklemur_assetbuilder_win")]
     [InlineData("simple", "linux", "resource_simple_linux")]
     public async Task CreateAssetBundle_VerifyNewNamingFormat(string inputBundleName, string buildTarget,
         string expectedFileName) {
         // Skip test in CI environments or if Unity is not available
         var isCI = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CI")) ||
                    !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"));
-        
+
         if (isCI) {
             _output.WriteLine("Skipping test: Unity tests are disabled in CI environment");
             return;
@@ -70,8 +70,7 @@ public class AssetBundleNamingTests : IDisposable {
         _output.WriteLine($"Testing naming: '{inputBundleName}' + '{buildTarget}' = '{expectedFileName}'");
 
         // Create build configuration
-        var config = new BuildConfiguration
-        {
+        var config = new BuildConfiguration {
             UnityPath = unityPath,
             UnityVersion = "2022.3.35f1",
             AssetDirectory = _testAssetsPath,
@@ -121,15 +120,13 @@ public class AssetBundleNamingTests : IDisposable {
     [Fact]
     public void GenerateAssetBundleName_LogicTest() {
         // Test the naming logic without requiring Unity
-        var testCases = new[]
-        {
-            new { BundleName = "author.modname", Target = "windows", Expected = "resource_author_modname_windows" },
+        var testCases = new[] {
+            new { BundleName = "author.modname", Target = "windows", Expected = "resource_author_modname_win" },
             new { BundleName = "mymod", Target = "linux", Expected = "resource_mymod_linux" },
             new { BundleName = "test.bundle", Target = "mac", Expected = "resource_test_bundle_mac" },
-            new
-            {
+            new {
                 BundleName = "complex.name.with.dots", Target = "windows",
-                Expected = "resource_complex_name_with_dots_windows"
+                Expected = "resource_complex_name_with_dots_win"
             },
             new { BundleName = "simple", Target = "linux", Expected = "resource_simple_linux" }
         };
@@ -137,7 +134,17 @@ public class AssetBundleNamingTests : IDisposable {
         foreach (var testCase in testCases) {
             // Simulate the naming logic from ModAssetBundleBuilder.cs
             var normalizedBundleName = testCase.BundleName.Replace(".", "_");
-            var actualResult = $"resource_{normalizedBundleName}_{testCase.Target}";
+            
+            // Map build target to short suffix
+            var platformSuffix = testCase.Target switch
+            {
+                "windows" => "win",
+                "mac" => "mac",
+                "linux" => "linux",
+                _ => testCase.Target
+            };
+            
+            var actualResult = $"resource_{normalizedBundleName}_{platformSuffix}";
 
             _output.WriteLine($"Input: '{testCase.BundleName}' + '{testCase.Target}' -> '{actualResult}'");
             Assert.Equal(testCase.Expected, actualResult);
@@ -147,8 +154,7 @@ public class AssetBundleNamingTests : IDisposable {
     [Fact]
     public void GenerateAssetBundleName_NoTargetLogicTest() {
         // Test the naming logic for no platform suffix without requiring Unity
-        var testCases = new[]
-        {
+        var testCases = new[] {
             new { BundleName = "author.modname", Expected = "resource_author_modname" },
             new { BundleName = "mymod", Expected = "resource_mymod" },
             new { BundleName = "test.bundle", Expected = "resource_test_bundle" },
@@ -174,7 +180,7 @@ public class AssetBundleNamingTests : IDisposable {
         // Skip test in CI environments or if Unity is not available
         var isCI = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CI")) ||
                    !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"));
-        
+
         if (isCI) {
             _output.WriteLine("Skipping test: Unity tests are disabled in CI environment");
             return;
@@ -193,10 +199,19 @@ public class AssetBundleNamingTests : IDisposable {
         }
 
         const string bundleName = "target.test";
-        var expectedFileName = $"resource_target_test_{buildTarget}";
-
-        var config = new BuildConfiguration
+        
+        // Map build target to short suffix
+        var platformSuffix = buildTarget switch
         {
+            "windows" => "win",
+            "mac" => "mac",
+            "linux" => "linux",
+            _ => buildTarget
+        };
+        
+        var expectedFileName = $"resource_target_test_{platformSuffix}";
+
+        var config = new BuildConfiguration {
             UnityPath = unityPath,
             UnityVersion = "2022.3.35f1",
             AssetDirectory = _testAssetsPath,
@@ -226,7 +241,7 @@ public class AssetBundleNamingTests : IDisposable {
         // Skip test in CI environments or if Unity is not available
         var isCI = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CI")) ||
                    !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"));
-        
+
         if (isCI) {
             _output.WriteLine("Skipping test: Unity tests are disabled in CI environment");
             return;
@@ -247,8 +262,7 @@ public class AssetBundleNamingTests : IDisposable {
         const string bundleName = "no.target.test";
         var expectedFileName = "resource_no_target_test"; // No platform suffix expected
 
-        var config = new BuildConfiguration
-        {
+        var config = new BuildConfiguration {
             UnityPath = unityPath,
             UnityVersion = "2022.3.35f1",
             AssetDirectory = _testAssetsPath,
@@ -294,19 +308,19 @@ public class AssetBundleNamingTests : IDisposable {
     }
 
     private static string DetectCurrentOSForTest() {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return "windows";
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return "win";
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) return "mac";
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) return "linux";
+
         return "unknown";
     }
 
     private Task<bool> BuildAssetBundleAsync(BuildConfiguration config) {
-        return Task.Run(() =>
-        {
+        return Task.Run(() => {
             try {
                 // Initialize global config first
                 GlobalConfig.Config = config;
-                
+
                 // Redirect console output to test output
                 var originalOut = Console.Out;
                 var originalError = Console.Error;
@@ -316,7 +330,7 @@ public class AssetBundleNamingTests : IDisposable {
 
                 // Initialize logging after console redirection so Serilog uses the redirected console
                 GlobalConfig.InitializeLogging(config.Verbosity);
-                
+
                 // Use the main AssetBundleBuilder logic
                 var exitCode = Program.BuildAssetBundle(config);
 

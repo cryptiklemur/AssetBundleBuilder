@@ -42,7 +42,7 @@ public class AssetBundleCreationTests : IDisposable {
         // Skip test in CI environments or if Unity is not available
         var isCI = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CI")) ||
                    !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"));
-        
+
         if (isCI) {
             _output.WriteLine("Skipping test: Unity tests are disabled in CI environment");
             return;
@@ -68,8 +68,7 @@ public class AssetBundleCreationTests : IDisposable {
         Assert.True(File.Exists(emptyPngPath), "Empty.png not found in TestAssets/Textures");
 
         // Create build configuration
-        var config = new BuildConfiguration
-        {
+        var config = new BuildConfiguration {
             UnityPath = unityPath,
             UnityVersion = "2022.3.35f1",
             AssetDirectory = _testAssetsPath,
@@ -136,7 +135,7 @@ public class AssetBundleCreationTests : IDisposable {
         // Skip test in CI environments or if Unity is not available
         var isCI = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CI")) ||
                    !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"));
-        
+
         if (isCI) {
             _output.WriteLine("Skipping test: Unity tests are disabled in CI environment");
             return;
@@ -149,8 +148,7 @@ public class AssetBundleCreationTests : IDisposable {
         }
 
         // Create build configuration with different bundle names
-        var config = new BuildConfiguration
-        {
+        var config = new BuildConfiguration {
             UnityPath = unityPath,
             UnityVersion = "2022.3.35f1",
             AssetDirectory = _testAssetsPath,
@@ -186,7 +184,7 @@ public class AssetBundleCreationTests : IDisposable {
         // Skip test in CI environments or if Unity is not available
         var isCI = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CI")) ||
                    !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"));
-        
+
         if (isCI) {
             _output.WriteLine("Skipping test: Unity tests are disabled in CI environment");
             return;
@@ -198,8 +196,7 @@ public class AssetBundleCreationTests : IDisposable {
             return;
         }
 
-        var config = new BuildConfiguration
-        {
+        var config = new BuildConfiguration {
             UnityPath = unityPath,
             UnityVersion = "2022.3.35f1",
             AssetDirectory = _testAssetsPath,
@@ -220,8 +217,7 @@ public class AssetBundleCreationTests : IDisposable {
 
     [Fact]
     public void CreateAssetBundle_InvalidUnityVersion_ShouldFail() {
-        var config = new BuildConfiguration
-        {
+        var config = new BuildConfiguration {
             UnityVersion = "invalid.version",
             AssetDirectory = _testAssetsPath,
             OutputDirectory = _testOutputPath,
@@ -243,7 +239,7 @@ public class AssetBundleCreationTests : IDisposable {
         // Skip test in CI environments or if Unity is not available
         var isCI = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CI")) ||
                    !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"));
-        
+
         if (isCI) {
             _output.WriteLine("Skipping test: Unity tests are disabled in CI environment");
             return;
@@ -255,8 +251,7 @@ public class AssetBundleCreationTests : IDisposable {
             return;
         }
 
-        var config = new BuildConfiguration
-        {
+        var config = new BuildConfiguration {
             UnityPath = unityPath,
             UnityVersion = "2022.3.35f1",
             AssetDirectory = _testAssetsPath,
@@ -286,8 +281,7 @@ public class AssetBundleCreationTests : IDisposable {
     public void CreateAssetBundle_InvalidAssetDirectory_ShouldFail() {
         var nonExistentPath = Path.Combine(Path.GetTempPath(), $"NonExistent_{Guid.NewGuid():N}");
 
-        var config = new BuildConfiguration
-        {
+        var config = new BuildConfiguration {
             UnityPath = @"C:\Unity\2022.3.35f1\Editor\Unity.exe", // Dummy path for test
             AssetDirectory = nonExistentPath,
             OutputDirectory = _testOutputPath,
@@ -299,12 +293,11 @@ public class AssetBundleCreationTests : IDisposable {
     }
 
     private Task<bool> BuildAssetBundleAsync(BuildConfiguration config) {
-        return Task.Run(() =>
-        {
+        return Task.Run(() => {
             try {
                 // Initialize global config first
                 GlobalConfig.Config = config;
-                
+
                 // Redirect console output to test output
                 var originalOut = Console.Out;
                 var originalError = Console.Error;
@@ -314,7 +307,7 @@ public class AssetBundleCreationTests : IDisposable {
 
                 // Initialize logging after console redirection so Serilog uses the redirected console
                 GlobalConfig.InitializeLogging(config.Verbosity);
-                
+
                 // Use the main AssetBundleBuilder logic
                 var exitCode = Program.BuildAssetBundle(config);
 
@@ -338,7 +331,7 @@ public class AssetBundleCreationTests : IDisposable {
         // Skip test in CI environments or if Unity is not available
         var isCI = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CI")) ||
                    !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"));
-        
+
         if (isCI) {
             _output.WriteLine("Skipping test: Unity tests are disabled in CI environment");
             return;
@@ -350,8 +343,7 @@ public class AssetBundleCreationTests : IDisposable {
             return;
         }
 
-        var config = new BuildConfiguration
-        {
+        var config = new BuildConfiguration {
             UnityPath = unityPath,
             UnityVersion = "2022.3.35f1",
             AssetDirectory = _testAssetsPath,
@@ -396,8 +388,7 @@ public class AssetBundleCreationTests : IDisposable {
         Directory.CreateDirectory(emptyDir);
         _tempDirectoriesToCleanup.Add(emptyDir);
 
-        var config = new BuildConfiguration
-        {
+        var config = new BuildConfiguration {
             UnityPath = UnityPathFinder.FindUnityExecutable("2022.3.35f1") ?? "",
             AssetDirectory = emptyDir,
             OutputDirectory = _testOutputPath,

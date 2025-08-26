@@ -7,8 +7,7 @@ public class UnityHubPathTests {
     [Fact]
     public void WindowsUnityHubPaths_ContainExpectedLocations() {
         // Arrange
-        var expectedPaths = new[]
-        {
+        var expectedPaths = new[] {
             @"C:\Program Files\Unity Hub\Unity Hub.exe",
             @"C:\Program Files (x86)\Unity Hub\Unity Hub.exe"
         };
@@ -34,8 +33,7 @@ public class UnityHubPathTests {
     [Fact]
     public void LinuxUnityHubPaths_ContainExpectedLocations() {
         // Arrange
-        var expectedPaths = new[]
-        {
+        var expectedPaths = new[] {
             "/opt/unityhub/unityhub",
             "/usr/bin/unityhub"
         };
@@ -64,7 +62,7 @@ public class UnityHubPathTests {
         Assert.Contains("--headless install", commandWithChangeset);
         Assert.Contains($"--version {version}", commandWithChangeset);
         Assert.Contains($"--changeset {changeset}", commandWithChangeset);
-        
+
         Assert.Contains("--headless install", commandWithoutChangeset);
         Assert.Contains($"--version {version}", commandWithoutChangeset);
         Assert.DoesNotContain("--changeset", commandWithoutChangeset);

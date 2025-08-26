@@ -118,7 +118,7 @@ public class ArgumentParserTests {
         var assetPath = GetTestPath("Assets");
         var outputPath = GetTestPath("Output");
         var args = new[] { "2022.3.35f1", assetPath, bundleName, outputPath };
-        
+
         var exception = Assert.Throws<ArgumentException>(() => ArgumentParser.Parse(args));
         Assert.Contains("cannot end with .framework or .bundle", exception.Message);
         Assert.Contains(bundleName.ToLower(), exception.Message);
@@ -151,8 +151,10 @@ public class ArgumentParserTests {
     public void Parse_WithMultipleExcludes_ShouldAddAllPatterns() {
         var assetPath = GetTestPath("Assets");
         var outputPath = GetTestPath("Output");
-        var args = new[] { "2022.3.35f1", assetPath, "testmod", outputPath, 
-            "--exclude", "*.tmp", "--exclude", "backup/*", "--exclude", "*.bak" };
+        var args = new[] {
+            "2022.3.35f1", assetPath, "testmod", outputPath,
+            "--exclude", "*.tmp", "--exclude", "backup/*", "--exclude", "*.bak"
+        };
         var config = ArgumentParser.Parse(args);
 
         Assert.NotNull(config);
@@ -189,8 +191,10 @@ public class ArgumentParserTests {
     public void Parse_WithMultipleIncludes_ShouldAddAllPatterns() {
         var assetPath = GetTestPath("Assets");
         var outputPath = GetTestPath("Output");
-        var args = new[] { "2022.3.35f1", assetPath, "testmod", outputPath, 
-            "--include", "*.png", "--include", "textures/*", "--include", "*.jpg" };
+        var args = new[] {
+            "2022.3.35f1", assetPath, "testmod", outputPath,
+            "--include", "*.png", "--include", "textures/*", "--include", "*.jpg"
+        };
         var config = ArgumentParser.Parse(args);
 
         Assert.NotNull(config);
@@ -215,8 +219,10 @@ public class ArgumentParserTests {
     public void Parse_WithBothIncludeAndExclude_ShouldAddAllPatterns() {
         var assetPath = GetTestPath("Assets");
         var outputPath = GetTestPath("Output");
-        var args = new[] { "2022.3.35f1", assetPath, "testmod", outputPath, 
-            "--include", "*.png", "--exclude", "*.tmp", "--include", "*.jpg" };
+        var args = new[] {
+            "2022.3.35f1", assetPath, "testmod", outputPath,
+            "--include", "*.png", "--exclude", "*.tmp", "--include", "*.jpg"
+        };
         var config = ArgumentParser.Parse(args);
 
         Assert.NotNull(config);
@@ -225,6 +231,45 @@ public class ArgumentParserTests {
         Assert.Contains("*.jpg", config.IncludePatterns);
         Assert.Single(config.ExcludePatterns);
         Assert.Contains("*.tmp", config.ExcludePatterns);
+    }
+
+    [Fact]
+    public void Parse_ConfigOnlyMode_ShouldParseCorrectly() {
+        var configPath = GetTestPath("mymod.toml");
+        var args = new[] { "--config", configPath };
+        var config = ArgumentParser.Parse(args);
+
+        Assert.NotNull(config);
+        Assert.Equal(Path.GetFullPath(configPath), config.ConfigFile);
+        Assert.Empty(config.BundleConfigName);
+    }
+
+    [Fact]
+    public void Parse_ConfigWithBundleName_ShouldParseCorrectly() {
+        var configPath = GetTestPath("mymod.toml");
+        var args = new[] { "--config", configPath, "--bundle-config", "sounds" };
+        var config = ArgumentParser.Parse(args);
+
+        Assert.NotNull(config);
+        Assert.Equal(Path.GetFullPath(configPath), config.ConfigFile);
+        Assert.Equal("sounds", config.BundleConfigName);
+    }
+
+    [Fact]
+    public void Parse_MixedConfigAndCliArgs_ShouldParseCorrectly() {
+        var assetPath = GetTestPath("Assets");
+        var outputPath = GetTestPath("Output");
+        var configPath = GetTestPath("mymod.toml");
+        var args = new[]
+            { "2022.3.35f1", assetPath, "testmod", outputPath, "--config", configPath, "--bundle-config", "textures" };
+        var config = ArgumentParser.Parse(args);
+
+        Assert.NotNull(config);
+        Assert.Equal("2022.3.35f1", config.UnityVersion);
+        Assert.Equal(Path.GetFullPath(assetPath), config.AssetDirectory);
+        Assert.Equal("testmod", config.BundleName);
+        Assert.Equal(Path.GetFullPath(configPath), config.ConfigFile);
+        Assert.Equal("textures", config.BundleConfigName);
     }
 
     private class TempUnityFile : IDisposable {
