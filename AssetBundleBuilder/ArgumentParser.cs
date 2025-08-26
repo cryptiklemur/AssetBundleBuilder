@@ -138,6 +138,9 @@ public static class ArgumentParser {
                 case "--include" when i + 1 < args.Length:
                     config.IncludePatterns.Add(args[++i]);
                     break;
+                case "--filename" when i + 1 < args.Length:
+                    config.Filename = args[++i];
+                    break;
                 case "--config" when i + 1 < args.Length:
                     config.ConfigFile = Path.GetFullPath(args[++i]);
                     break;
@@ -245,6 +248,9 @@ public static class ArgumentParser {
                     break;
                 case "--include" when i + 1 < args.Length:
                     config.IncludePatterns.Add(args[++i]);
+                    break;
+                case "--filename" when i + 1 < args.Length:
+                    config.Filename = args[++i];
                     break;
                 case "--bundle-name" when i + 1 < args.Length:
                     config.BundleName = args[++i];

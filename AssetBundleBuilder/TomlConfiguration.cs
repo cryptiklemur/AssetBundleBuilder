@@ -34,6 +34,8 @@ public class TomlGlobalConfig {
     [TomlProperty("exclude_patterns")] public List<string>? ExcludePatterns { get; set; }
 
     [TomlProperty("include_patterns")] public List<string>? IncludePatterns { get; set; }
+
+    [TomlProperty("filename")] public string? Filename { get; set; }
 }
 
 public class TomlBundleConfig {
@@ -66,6 +68,8 @@ public class TomlBundleConfig {
     [TomlProperty("exclude_patterns")] public List<string>? ExcludePatterns { get; set; }
 
     [TomlProperty("include_patterns")] public List<string>? IncludePatterns { get; set; }
+
+    [TomlProperty("filename")] public string? Filename { get; set; }
 
     [TomlProperty("description")] public string? Description { get; set; }
 }

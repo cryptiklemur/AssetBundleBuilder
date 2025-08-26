@@ -20,4 +20,5 @@ public class BuildConfiguration {
     public List<string> IncludePatterns { get; set; } = new();
     public string ConfigFile { get; set; } = string.Empty;
     public string BundleConfigName { get; set; } = string.Empty;
+    public string Filename { get; set; } = string.Empty; // Empty means use default format
 }

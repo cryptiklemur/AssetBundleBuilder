@@ -104,6 +104,7 @@ public static class ConfigurationLoader {
         if (bundleConfig.NonInteractive.HasValue) config.NonInteractive = bundleConfig.NonInteractive.Value;
         if (bundleConfig.ExcludePatterns != null) config.ExcludePatterns.AddRange(bundleConfig.ExcludePatterns);
         if (bundleConfig.IncludePatterns != null) config.IncludePatterns.AddRange(bundleConfig.IncludePatterns);
+        if (!string.IsNullOrEmpty(bundleConfig.Filename)) config.Filename = bundleConfig.Filename;
     }
 
     private static void ApplyCliConfig(BuildConfiguration mergedConfig, BuildConfiguration cliConfig) {
@@ -123,6 +124,7 @@ public static class ConfigurationLoader {
         if (cliConfig.NonInteractive) mergedConfig.NonInteractive = cliConfig.NonInteractive;
         if (cliConfig.ExcludePatterns.Count > 0) mergedConfig.ExcludePatterns.AddRange(cliConfig.ExcludePatterns);
         if (cliConfig.IncludePatterns.Count > 0) mergedConfig.IncludePatterns.AddRange(cliConfig.IncludePatterns);
+        if (!string.IsNullOrEmpty(cliConfig.Filename)) mergedConfig.Filename = cliConfig.Filename;
     }
 
     private static string ResolvePath(string path, string configPath) {

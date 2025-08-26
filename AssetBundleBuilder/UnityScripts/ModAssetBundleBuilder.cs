@@ -26,6 +26,7 @@ public class ModAssetBundleBuilder
         var assetDirectory = "";
         var buildTarget = "all";
         var noPlatformSuffix = false;
+        var filenameFormat = "";
         var includePatterns = new List<string>();
         var excludePatterns = new List<string>();
         for (int i = 0; i < arguments.Length; i++)
@@ -91,6 +92,12 @@ public class ModAssetBundleBuilder
                 var patterns = arguments[i + 1].Split(';');
                 excludePatterns.AddRange(patterns);
                 Debug.Log($"Exclude patterns: {string.Join(", ", patterns)}");
+                i++; // Skip the next argument since we've consumed it
+            }
+            else if (arg == "-filenameFormat" && i + 1 < arguments.Length)
+            {
+                filenameFormat = arguments[i + 1];
+                Debug.Log($"Filename format: {filenameFormat}");
                 i++; // Skip the next argument since we've consumed it
             }
         }
@@ -173,22 +180,32 @@ public class ModAssetBundleBuilder
         if (File.Exists(unityManifestFile)) File.Delete(unityManifestFile);
         if (File.Exists(unityManifestMetaFile)) File.Delete(unityManifestMetaFile);
 
-        // Generate the new naming format: resource_<bundlename>_<target> or resource_<bundlename> if no platform suffix
-        // Convert periods to underscores in bundle name
-        var normalizedBundleName = assetBundleName.Replace(".", "_");
+        // Determine the final filename using custom format or default
+        string finalFileName;
         
-        // Map build target to short suffix
-        string platformSuffix = buildTarget switch
+        if (!string.IsNullOrEmpty(filenameFormat))
         {
-            "windows" => "win",
-            "mac" => "mac",
-            "linux" => "linux",
-            _ => buildTarget
-        };
-        
-        var finalFileName = noPlatformSuffix 
-            ? $"resource_{normalizedBundleName}"
-            : $"resource_{normalizedBundleName}_{platformSuffix}";
+            // Use custom filename format with variable substitution
+            finalFileName = ApplyFilenameFormat(filenameFormat, assetBundleName, buildTarget, noPlatformSuffix);
+        }
+        else
+        {
+            // Use default naming format
+            var normalizedBundleName = assetBundleName.Replace(".", "_");
+            
+            // Map build target to short suffix
+            string platformSuffix = buildTarget switch
+            {
+                "windows" => "win",
+                "mac" => "mac",
+                "linux" => "linux",
+                _ => buildTarget
+            };
+            
+            finalFileName = noPlatformSuffix 
+                ? $"resource_{normalizedBundleName}"
+                : $"resource_{normalizedBundleName}_{platformSuffix}";
+        }
         
         Debug.Log($"Bundle naming: '{assetBundleName}' -> '{finalFileName}' (no platform suffix: {noPlatformSuffix})");
         
@@ -211,5 +228,45 @@ public class ModAssetBundleBuilder
         Debug.Log("Asset bundles built successfully.");
     }
 
+    private static string ApplyFilenameFormat(string format, string bundleName, string buildTarget, bool noPlatformSuffix)
+    {
+        // Normalize the bundle name (replace dots with underscores)
+        var normalizedBundleName = bundleName.Replace(".", "_");
+        
+        // Map build target to short suffix
+        string platformSuffix = buildTarget switch
+        {
+            "windows" => "win",
+            "mac" => "mac",
+            "linux" => "linux",
+            _ => buildTarget
+        };
+        
+        // Replace variables in the format string
+        var result = format;
+        result = result.Replace("[bundle_name]", normalizedBundleName);
+        result = result.Replace("[bundlename]", normalizedBundleName); // Allow both styles
+        result = result.Replace("[bundle-name]", normalizedBundleName); // Allow hyphenated style
+        
+        // Only include platform if we should have a platform suffix
+        if (!noPlatformSuffix)
+        {
+            result = result.Replace("[platform]", platformSuffix);
+            result = result.Replace("[target]", platformSuffix); // Allow [target] as alias
+        }
+        else
+        {
+            // Remove platform variables if no platform suffix
+            result = result.Replace("_[platform]", "");
+            result = result.Replace("[platform]", "");
+            result = result.Replace("_[target]", "");
+            result = result.Replace("[target]", "");
+        }
+        
+        // Also support the original bundle name with dots
+        result = result.Replace("[original_bundle_name]", bundleName);
+        
+        return result;
+    }
 
 }

@@ -207,6 +207,12 @@ public static class Program {
                 isAutoTarget ? "true" : "false"
             ]);
 
+            // Add custom filename format if provided
+            if (!string.IsNullOrEmpty(config.Filename)) {
+                unityArgsList.Add("-filenameFormat");
+                unityArgsList.Add(config.Filename);
+            }
+
             // Add include patterns if any
             if (config.IncludePatterns.Count > 0) {
                 unityArgsList.Add("-includePatterns");
@@ -318,6 +324,11 @@ public static class Program {
                               --non-interactive      Auto-answer yes to prompts, exit on errors
                               --exclude <pattern>    Exclude files matching glob pattern (can be used multiple times)
                               --include <pattern>    Include only files matching glob pattern (can be used multiple times)
+                              --filename <format>    Custom filename format with variables:
+                                                     [bundle_name] - Bundle name with dots replaced by underscores
+                                                     [platform] - Platform suffix (win, mac, linux)
+                                                     Default: "resource_[bundle_name]_[platform]" (with target)
+                                                              "resource_[bundle_name]" (without target)
                               --config <path>        Use TOML configuration file
                               --bundle-config <name> Select specific bundle from config file
                               --list-bundles <path>  List available bundles in config file
@@ -330,6 +341,7 @@ public static class Program {
                               AssetBundleBuilder 2022.3.35f1 "C:\MyMod\Assets" "C:\MyMod\Output" "mymod"
                               AssetBundleBuilder 2022.3.35f1 ./assets ./output mymod --exclude "*.tmp"
                               AssetBundleBuilder 2022.3.35f1 ./assets ./output mymod --include "*.png" --include "*.jpg"
+                              AssetBundleBuilder 2022.3.35f1 ./assets ./output mymod --filename "mod_[bundle_name]_[platform]"
 
                               # Config file usage:
                               AssetBundleBuilder --config mymod.toml
@@ -349,6 +361,7 @@ public static class Program {
                               unity_version = "2022.3.35f1"
                               build_target = "windows"
                               exclude_patterns = ["*.tmp", "backup/*"]
+                              filename = "resource_[bundle_name]_[platform]"
 
                               [bundles.textures]
                               asset_directory = "Assets/Textures"
@@ -359,6 +372,7 @@ public static class Program {
                               asset_directory = "Assets/Sounds"
                               bundle_name = "author.sounds"
                               include_patterns = ["*.wav", "*.ogg"]
+                              filename = "audio_[bundle_name]"
                             """;
 
         Console.WriteLine(help);
