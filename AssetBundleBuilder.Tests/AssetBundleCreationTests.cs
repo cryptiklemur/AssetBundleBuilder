@@ -1,40 +1,11 @@
+using CryptikLemur.AssetBundleBuilder.Utilities;
 using Xunit;
 using Xunit.Abstractions;
 
 namespace CryptikLemur.AssetBundleBuilder.Tests;
 
-public class AssetBundleCreationTests : IDisposable {
-    private readonly ITestOutputHelper _output;
-    private readonly List<string> _tempDirectoriesToCleanup = new();
-    private readonly string _testAssetsPath;
-    private readonly string _testOutputPath;
-
-    public AssetBundleCreationTests(ITestOutputHelper output) {
-        _output = output;
-        _testAssetsPath =
-            Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "TestAssets"));
-        _testOutputPath =
-            Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "TestOutput"));
-
-        // Clear and create TestOutput directory
-        if (Directory.Exists(_testOutputPath)) Directory.Delete(_testOutputPath, true);
-        Directory.CreateDirectory(_testOutputPath);
-        _tempDirectoriesToCleanup.Add(_testOutputPath);
-    }
-
-    public void Dispose() {
-        foreach (var dir in _tempDirectoriesToCleanup)
-            if (Directory.Exists(dir)) {
-                try {
-                    var files = Directory.GetFiles(dir, "*", SearchOption.AllDirectories);
-                    foreach (var file in files) File.SetAttributes(file, FileAttributes.Normal);
-                    Directory.Delete(dir, true);
-                    _output.WriteLine($"Cleaned up test directory: {dir}");
-                }
-                catch (Exception ex) {
-                    _output.WriteLine($"Warning: Could not clean up {dir}: {ex.Message}");
-                }
-            }
+public class AssetBundleCreationTests : AssetBundleTestBase {
+    public AssetBundleCreationTests(ITestOutputHelper output) : base(output) {
     }
 
     [Fact]
@@ -68,7 +39,7 @@ public class AssetBundleCreationTests : IDisposable {
         Assert.True(File.Exists(emptyPngPath), "Empty.png not found in TestAssets/Textures");
 
         // Create build configuration
-        var config = new BuildConfiguration {
+        var config = new Configuration {
             UnityPath = unityPath,
             UnityVersion = "2022.3.35f1",
             AssetDirectory = _testAssetsPath,
@@ -94,7 +65,13 @@ public class AssetBundleCreationTests : IDisposable {
 
         // Verify output files were created with new naming format
         var normalizedBundleName = config.BundleName.Replace(".", "_");
-        var expectedFileName = $"resource_{normalizedBundleName}_{config.BuildTarget}";
+        var platformSuffix = config.BuildTarget switch {
+            "windows" => "win",
+            "mac" => "mac",
+            "linux" => "linux",
+            _ => config.BuildTarget
+        };
+        var expectedFileName = $"resource_{normalizedBundleName}_{platformSuffix}";
         var expectedBundleFile = Path.Combine(_testOutputPath, expectedFileName);
         var expectedManifestFile = Path.Combine(_testOutputPath, expectedFileName + ".manifest");
 
@@ -148,7 +125,7 @@ public class AssetBundleCreationTests : IDisposable {
         }
 
         // Create build configuration with different bundle names
-        var config = new BuildConfiguration {
+        var config = new Configuration {
             UnityPath = unityPath,
             UnityVersion = "2022.3.35f1",
             AssetDirectory = _testAssetsPath,
@@ -165,7 +142,13 @@ public class AssetBundleCreationTests : IDisposable {
 
         // Verify the output file uses the new naming format
         var normalizedBundleName = inputBundleName.Replace(".", "_");
-        var expectedFileName = $"resource_{normalizedBundleName}_{config.BuildTarget}";
+        var platformSuffix = config.BuildTarget switch {
+            "windows" => "win",
+            "mac" => "mac",
+            "linux" => "linux",
+            _ => config.BuildTarget
+        };
+        var expectedFileName = $"resource_{normalizedBundleName}_{platformSuffix}";
         var expectedBundleFile = Path.Combine(_testOutputPath, expectedFileName);
         var expectedManifestFile = Path.Combine(_testOutputPath, expectedFileName + ".manifest");
 
@@ -196,7 +179,7 @@ public class AssetBundleCreationTests : IDisposable {
             return;
         }
 
-        var config = new BuildConfiguration {
+        var config = new Configuration {
             UnityPath = unityPath,
             UnityVersion = "2022.3.35f1",
             AssetDirectory = _testAssetsPath,
@@ -217,7 +200,7 @@ public class AssetBundleCreationTests : IDisposable {
 
     [Fact]
     public void CreateAssetBundle_InvalidUnityVersion_ShouldFail() {
-        var config = new BuildConfiguration {
+        var config = new Configuration {
             UnityVersion = "invalid.version",
             AssetDirectory = _testAssetsPath,
             OutputDirectory = _testOutputPath,
@@ -251,7 +234,7 @@ public class AssetBundleCreationTests : IDisposable {
             return;
         }
 
-        var config = new BuildConfiguration {
+        var config = new Configuration {
             UnityPath = unityPath,
             UnityVersion = "2022.3.35f1",
             AssetDirectory = _testAssetsPath,
@@ -267,7 +250,13 @@ public class AssetBundleCreationTests : IDisposable {
 
         // Verify bundle was created with new naming format
         var normalizedBundleName = config.BundleName.Replace(".", "_");
-        var expectedFileName = $"resource_{normalizedBundleName}_{config.BuildTarget}";
+        var platformSuffix = config.BuildTarget switch {
+            "windows" => "win",
+            "mac" => "mac",
+            "linux" => "linux",
+            _ => config.BuildTarget
+        };
+        var expectedFileName = $"resource_{normalizedBundleName}_{platformSuffix}";
         var expectedBundleFile = Path.Combine(_testOutputPath, expectedFileName);
         Assert.True(File.Exists(expectedBundleFile));
 
@@ -281,7 +270,7 @@ public class AssetBundleCreationTests : IDisposable {
     public void CreateAssetBundle_InvalidAssetDirectory_ShouldFail() {
         var nonExistentPath = Path.Combine(Path.GetTempPath(), $"NonExistent_{Guid.NewGuid():N}");
 
-        var config = new BuildConfiguration {
+        var config = new Configuration {
             UnityPath = @"C:\Unity\2022.3.35f1\Editor\Unity.exe", // Dummy path for test
             AssetDirectory = nonExistentPath,
             OutputDirectory = _testOutputPath,
@@ -290,39 +279,6 @@ public class AssetBundleCreationTests : IDisposable {
         };
 
         Assert.False(Directory.Exists(config.AssetDirectory), "Asset directory should not exist");
-    }
-
-    private Task<bool> BuildAssetBundleAsync(BuildConfiguration config) {
-        return Task.Run(() => {
-            try {
-                // Initialize global config first
-                GlobalConfig.Config = config;
-
-                // Redirect console output to test output
-                var originalOut = Console.Out;
-                var originalError = Console.Error;
-                var testWriter = new StringWriter();
-                Console.SetOut(testWriter);
-                Console.SetError(testWriter);
-
-                // Initialize logging after console redirection so Serilog uses the redirected console
-                GlobalConfig.InitializeLogging(config.Verbosity);
-
-                // Use the main AssetBundleBuilder logic
-                var exitCode = Program.BuildAssetBundle(config);
-
-                // Restore console output and log what happened
-                Console.SetOut(originalOut);
-                Console.SetError(originalError);
-                _output.WriteLine(testWriter.ToString());
-
-                return exitCode == 0;
-            }
-            catch (Exception ex) {
-                _output.WriteLine($"Exception during build: {ex}");
-                return false;
-            }
-        });
     }
 
 
@@ -343,7 +299,7 @@ public class AssetBundleCreationTests : IDisposable {
             return;
         }
 
-        var config = new BuildConfiguration {
+        var config = new Configuration {
             UnityPath = unityPath,
             UnityVersion = "2022.3.35f1",
             AssetDirectory = _testAssetsPath,
@@ -388,7 +344,7 @@ public class AssetBundleCreationTests : IDisposable {
         Directory.CreateDirectory(emptyDir);
         _tempDirectoriesToCleanup.Add(emptyDir);
 
-        var config = new BuildConfiguration {
+        var config = new Configuration {
             UnityPath = UnityPathFinder.FindUnityExecutable("2022.3.35f1") ?? "",
             AssetDirectory = emptyDir,
             OutputDirectory = _testOutputPath,

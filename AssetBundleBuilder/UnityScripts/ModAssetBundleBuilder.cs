@@ -4,7 +4,6 @@ using System.IO;
 using UnityEditor;
 using UnityEngine;
 using System.Linq;
-using System.Xml.Linq;
 
 public class ModAssetBundleBuilder
 {

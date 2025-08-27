@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace CryptikLemur.AssetBundleBuilder;
+namespace CryptikLemur.AssetBundleBuilder.Utilities;
 
 public static class PatternMatcher {
     public static bool IsExcluded(string relativePath, List<string>? excludePatterns) {

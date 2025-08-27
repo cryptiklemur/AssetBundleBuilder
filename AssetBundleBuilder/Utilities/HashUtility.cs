@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace CryptikLemur.AssetBundleBuilder;
+namespace CryptikLemur.AssetBundleBuilder.Utilities;
 
 public static class HashUtility {
     public static string ComputeHash(string input) {

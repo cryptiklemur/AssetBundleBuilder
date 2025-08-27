@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace CryptikLemur.AssetBundleBuilder;
+namespace CryptikLemur.AssetBundleBuilder.Utilities;
 
 public static class UnityPathFinder {
     public static string? FindUnityExecutable(string version) {

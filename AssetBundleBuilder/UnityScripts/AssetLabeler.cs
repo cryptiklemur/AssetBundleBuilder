@@ -160,7 +160,6 @@ public class AssetLabeler
             importer.SaveAndReimport();
             assetsLabeled++;
             files.Add(assetPath);
-            //Console.WriteLine($"Labeled asset: {assetPath} as {assetFileName}");
         }
 
         Debug.Log($"Labeling complete: {assetsLabeled} assets labeled with \"{assetFileName}\".");

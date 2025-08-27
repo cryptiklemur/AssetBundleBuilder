@@ -1,41 +1,12 @@
 using System.Runtime.InteropServices;
+using CryptikLemur.AssetBundleBuilder.Utilities;
 using Xunit;
 using Xunit.Abstractions;
 
 namespace CryptikLemur.AssetBundleBuilder.Tests;
 
-public class AssetBundleNamingTests : IDisposable {
-    private readonly ITestOutputHelper _output;
-    private readonly List<string> _tempDirectoriesToCleanup = new();
-    private readonly string _testAssetsPath;
-    private readonly string _testOutputPath;
-
-    public AssetBundleNamingTests(ITestOutputHelper output) {
-        _output = output;
-        _testAssetsPath =
-            Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "TestAssets"));
-        _testOutputPath =
-            Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "TestOutputNaming"));
-
-        // Clear and create TestOutput directory
-        if (Directory.Exists(_testOutputPath)) Directory.Delete(_testOutputPath, true);
-        Directory.CreateDirectory(_testOutputPath);
-        _tempDirectoriesToCleanup.Add(_testOutputPath);
-    }
-
-    public void Dispose() {
-        foreach (var dir in _tempDirectoriesToCleanup)
-            if (Directory.Exists(dir)) {
-                try {
-                    var files = Directory.GetFiles(dir, "*", SearchOption.AllDirectories);
-                    foreach (var file in files) File.SetAttributes(file, FileAttributes.Normal);
-                    Directory.Delete(dir, true);
-                    _output.WriteLine($"Cleaned up test directory: {dir}");
-                }
-                catch (Exception ex) {
-                    _output.WriteLine($"Warning: Could not clean up {dir}: {ex.Message}");
-                }
-            }
+public class AssetBundleNamingTests : AssetBundleTestBase {
+    public AssetBundleNamingTests(ITestOutputHelper output) : base(output, "TestOutputNaming") {
     }
 
     [Theory]
@@ -70,7 +41,7 @@ public class AssetBundleNamingTests : IDisposable {
         _output.WriteLine($"Testing naming: '{inputBundleName}' + '{buildTarget}' = '{expectedFileName}'");
 
         // Create build configuration
-        var config = new BuildConfiguration {
+        var config = new Configuration {
             UnityPath = unityPath,
             UnityVersion = "2022.3.35f1",
             AssetDirectory = _testAssetsPath,
@@ -134,16 +105,15 @@ public class AssetBundleNamingTests : IDisposable {
         foreach (var testCase in testCases) {
             // Simulate the naming logic from ModAssetBundleBuilder.cs
             var normalizedBundleName = testCase.BundleName.Replace(".", "_");
-            
+
             // Map build target to short suffix
-            var platformSuffix = testCase.Target switch
-            {
+            var platformSuffix = testCase.Target switch {
                 "windows" => "win",
                 "mac" => "mac",
                 "linux" => "linux",
                 _ => testCase.Target
             };
-            
+
             var actualResult = $"resource_{normalizedBundleName}_{platformSuffix}";
 
             _output.WriteLine($"Input: '{testCase.BundleName}' + '{testCase.Target}' -> '{actualResult}'");
@@ -199,19 +169,18 @@ public class AssetBundleNamingTests : IDisposable {
         }
 
         const string bundleName = "target.test";
-        
+
         // Map build target to short suffix
-        var platformSuffix = buildTarget switch
-        {
+        var platformSuffix = buildTarget switch {
             "windows" => "win",
             "mac" => "mac",
             "linux" => "linux",
             _ => buildTarget
         };
-        
+
         var expectedFileName = $"resource_target_test_{platformSuffix}";
 
-        var config = new BuildConfiguration {
+        var config = new Configuration {
             UnityPath = unityPath,
             UnityVersion = "2022.3.35f1",
             AssetDirectory = _testAssetsPath,
@@ -262,7 +231,7 @@ public class AssetBundleNamingTests : IDisposable {
         const string bundleName = "no.target.test";
         var expectedFileName = "resource_no_target_test"; // No platform suffix expected
 
-        var config = new BuildConfiguration {
+        var config = new Configuration {
             UnityPath = unityPath,
             UnityVersion = "2022.3.35f1",
             AssetDirectory = _testAssetsPath,
@@ -313,38 +282,5 @@ public class AssetBundleNamingTests : IDisposable {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) return "linux";
 
         return "unknown";
-    }
-
-    private Task<bool> BuildAssetBundleAsync(BuildConfiguration config) {
-        return Task.Run(() => {
-            try {
-                // Initialize global config first
-                GlobalConfig.Config = config;
-
-                // Redirect console output to test output
-                var originalOut = Console.Out;
-                var originalError = Console.Error;
-                var testWriter = new StringWriter();
-                Console.SetOut(testWriter);
-                Console.SetError(testWriter);
-
-                // Initialize logging after console redirection so Serilog uses the redirected console
-                GlobalConfig.InitializeLogging(config.Verbosity);
-
-                // Use the main AssetBundleBuilder logic
-                var exitCode = Program.BuildAssetBundle(config);
-
-                // Restore console output and log what happened
-                Console.SetOut(originalOut);
-                Console.SetError(originalError);
-                _output.WriteLine(testWriter.ToString());
-
-                return exitCode == 0;
-            }
-            catch (Exception ex) {
-                _output.WriteLine($"Exception during build: {ex}");
-                return false;
-            }
-        });
     }
 }
