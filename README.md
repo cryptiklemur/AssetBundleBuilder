@@ -3,21 +3,50 @@
 Command line tool for building Unity asset bundles for RimWorld mods. No repository cloning or Unity project setup
 required.
 
-## Prerequisites
+## Quick Start
 
-**Automatic Unity Installation**: On Windows and macOS, if Unity is not found, the tool will automatically prompt to
-download and install Unity Hub and the required Unity Editor version. On Linux, manual Unity Hub installation is
-required.
+### Recommended: Using Configuration File
 
-The tool will:
+Create a `.assetbundle.toml` file in your project:
 
-- Auto-detect Unity installations in standard locations
-- Automatically install Unity Hub and Unity Editor if missing (Windows/macOS)
-- Create temporary Unity projects automatically
-- Handle all Unity project configuration
+```toml
+[global]
+unity_version = "2022.3.35f1"
+bundle_name = "author.modName"
+asset_directory = "Assets/"
+output_directory = "AssetBundles/"
+build_targets = ["windows", "linux", "mac"]
+link_method = "junction"  # or "copy", "symlink", "hardlink"
 
-For manual installation, download Unity Hub from [unity.com/download](https://unity.com/download) and install the
-required Unity version through it.
+[bundles.textures]
+filename = "resource_[bundle_name]_textures_[target]"
+exclude_patterns = ["*.shader"]
+build_target = "none" # will build a suffix-less asset bundle for every platform
+
+[bundles.shaders] # specify `--target windows` (or mac or linux) when running assetbundlebuilder to build for each platform
+filename = "resource_[bundle_name]_shaders_[target]"
+include_patterns = ["*.shader"]
+```
+
+Then build your bundles:
+
+```bash
+# Build a specific bundle, loads automatically from .assetbundler.toml
+assetbundlebuilder --bundle-config textures
+
+# Override settings from command line
+assetbundlebuilder --bundle-config shaders --target window
+```
+
+### Basic CLI Usage (Alternative)
+
+```bash
+# Simple command line usage without config file
+assetbundlebuilder 2022.3.35f1 "Assets/" "author.modName" "AssetBundles/"
+
+# With additional options
+assetbundlebuilder 2022.3.35f1 "Assets/" "author.modName" "AssetBundles/" --target windows
+```
 
 ## Installation
 
@@ -28,205 +57,159 @@ required Unity version through it.
 dotnet tool install --global CryptikLemur.AssetBundleBuilder
 
 # Use anywhere
-assetbundlebuilder 2022.3.35f1 "/path/to/assets" "mybundle" "/path/to/output"
+assetbundlebuilder --config myproject.toml --bundle-config mybundle
 ```
 
 ### Manual Installation
 
 Download the appropriate executable for your platform from
-the [Releases Page](https://github.com/CryptikLemur/AssetBundleBuilder/releases):
+the [Releases Page](https://github.com/CryptikLemur/AssetBundleBuilder/releases).
 
-Extract and run the executable directly. No installation required.
+## Configuration File Format
 
-## Quick Start
+The TOML configuration file allows you to define multiple asset bundles with different settings:
 
-### Basic Usage
+### Global Configuration
 
-```bash
-# Auto find Unity and build asset bundles
-assetbundlebuilder 2022.3.35f1 "/path/to/your/mod/assets" "mybundle" "/path/to/output/directory"
+```toml
+[global]
+unity_version = "2022.3.35f1"        # Unity version to use
+unity_path = "/path/to/Unity.exe"    # Or specify exact path
+output_directory = "Output"          # Default output directory
+build_target = "windows"             # Default build target
+build_targets = ["windows", "linux"] # Restrict allowed targets
+temp_project_path = "/tmp/unity"     # Custom temp directory
+clean_temp_project = false           # Clean temp project after building. Disabled by default for caching
+link_method = "copy"                 # How to link assets: copy/symlink/hardlink/junction
+log_file = "unity.log"               # Unity log output
+ci_mode = false                      # Disable Unity auto-installation
+non_interactive = false              # No prompts
+verbosity = "verbose"                # Output verbosity: quiet/normal/verbose/debug
+exclude_patterns = ["*.meta", "*.tmp"] # Files to exclude
+include_patterns = ["*.png", "*.wav"]  # Files to include
 ```
 
-### With Custom Bundle Name
+### Bundle Configuration
 
-```bash
-# Specify a custom bundle name
-assetbundlebuilder 2022.3.35f1 "/path/to/assets" "author.modname" "/path/to/output"
+```toml
+[bundles.mybundle]
+description = "My custom asset bundle"
+asset_directory = "Assets/MyBundle"
+bundle_name = "author.mybundle"
+output_directory = "CustomOutput"    # Override global output
+build_target = "none"                # Platform-agnostic bundle
+build_targets = ["windows"]          # Only allow specific targets
+filename = "resource_[bundle_name]_[target]" # Custom filename format
+
+# Bundle-specific patterns
+exclude_patterns = ["*.backup"]
+include_patterns = ["textures/*", "sounds/*"]
 ```
 
-### Specific Platform
+### Advanced Examples
 
-```bash
-# Build only for Windows
-assetbundlebuilder 2022.3.35f1 "/path/to/assets" "mybundle" "/path/to/output" --target windows
+#### Multiple Bundles with Different Targets
+
+```toml
+[global]
+unity_version = "2022.3.35f1"
+link_method = "junction"
+
+[bundles.core]
+asset_directory = "Core/Assets"
+bundle_name = "mymod.core"
+build_target = "none"  # Platform-agnostic
+
+[bundles.windows_only]
+asset_directory = "WindowsAssets"
+bundle_name = "mymod.windows"
+build_targets = ["windows"]  # Only for Windows
+
+[bundles.textures_hd]
+asset_directory = "HD/Textures"
+bundle_name = "mymod.hd"
+exclude_patterns = ["*_low.png"]  # Exclude low-res versions
 ```
 
-## How It Works
-
-1. Creates a temporary Unity project
-2. Finds Unity installations by version number across common paths
-3. Copies your assets and applies proper import settings
-4. Builds compressed asset bundles with platform specific optimizations
-5. Removes temporary files automatically
-
-## Supported Features
-
-- **Automatic Unity Installation**: Downloads and installs Unity Hub and Unity Editor if missing (Windows/macOS)
-- **Unity Version Auto Discovery**: Just specify the version (e.g., `2022.3.35f1`)
-- **Cross Platform**: Windows, macOS, and Linux native executables
-- **Multiple Build Targets**: Windows, macOS, Linux asset bundles
-- **Automatic Asset Import Settings**: Textures, audio, shaders
-- **Terrain Texture Support**: Special handling for terrain assets
-- **PSD File Support**: Basic Photoshop document import
-- **Temporary Project Management**: No manual Unity project required
-- **CI/CD Friendly**: Works in automated build pipelines
-
-## Command Reference
-
-```
-assetbundlebuilder <unity-path-or-version> <asset-directory> <bundle-name> [output-directory] [options]
-```
-
-### Arguments
-
-- **unity-path-or-version**: Either Unity version (e.g., `2022.3.35f1`) or full path to Unity executable
-- **asset-directory**: Directory containing your mod's assets (textures, sounds, etc.)
-- **bundle-name**: Name for the asset bundle (e.g., "mymod", "author.modname")
-- **output-directory**: Where to create the asset bundles (optional, defaults to current directory)
-
-### Options
-
-- `--unity-version <version>`: Explicitly specify Unity version
-- `--bundle-name <name>`: Override bundle name (alternative to positional argument)
-- `--target <target>`: Build target: `windows`, `mac`, or `linux` (default: `windows`)
-- `--temp-project <path>`: Custom location for temporary Unity project
-- `--clean-temp`: Delete temporary project after build (default: keep for caching)
-
-## Examples
-
-### Windows
-
-```powershell
-# Using .NET global tool
-assetbundlebuilder 2022.3.35f1 "C:\MyMod\Assets" "mymod" "C:\MyMod\Output"
-
-# Using specific Unity installation
-assetbundlebuilder "C:\Unity\2022.3.35f1\Editor\Unity.exe" "C:\MyMod\Assets" "mymod" "C:\MyMod\Output"
-```
-
-### macOS
-
-```bash
-# Using .NET global tool
-assetbundlebuilder 2022.3.35f1 "/Users/me/MyMod/Assets" "mymod" "/Users/me/MyMod/Output"
-
-# Using specific Unity installation
-assetbundlebuilder "/Applications/Unity/Hub/Editor/2022.3.35f1/Unity.app/Contents/MacOS/Unity" "/Users/me/MyMod/Assets" "mymod" "/Users/me/MyMod/Output"
-```
-
-### Linux
-
-```bash
-# Using .NET Global Tool
-assetbundlebuilder 2022.3.35f1 "/home/user/MyMod/Assets" "mymod" "/home/user/MyMod/Output"
-
-# Build only Linux bundles
-assetbundlebuilder 2022.3.35f1 "/home/user/MyMod/Assets" "mymod" "/home/user/MyMod/Output" --target linux
-```
-
-## Unity Installation Paths
-
-The tool automatically searches these common Unity installation locations:
-
-### Windows
-
-- `C:\Program Files\Unity\Hub\Editor\`
-- `C:\Program Files (x86)\Unity\Hub\Editor\`
-- `%USERPROFILE%\Unity\Hub\Editor\`
-
-### macOS
-
-- `/Applications/Unity/Hub/Editor/`
-- `$HOME/Applications/Unity/Hub/Editor/`
-
-### Linux
-
-- `/opt/unity/editor/`
-- `$HOME/Unity/Hub/Editor/`
-- `$HOME/.local/share/Unity/Hub/Editor/`
-
-## CI/CD Integration
-
-### GitHub Actions
+#### CI/CD Configuration
 
 ```yaml
 - name: Install AssetBundleBuilder
   run: dotnet tool install --global CryptikLemur.AssetBundleBuilder
-
-- uses: buildalon/unity-setup@v1
-  with:
-    unity-version: 2022.3.35f1
-    build-targets: StandaloneWindows64 StandaloneOSX StandaloneLinux64
-    modules: windows-mono mac-mono linux-il2cpp
-
-- uses: buildalon/activate-unity-license@v1
-  with:
-    license: 'Personal'
-    username: ${{ secrets.UNITY_EMAIL }}
-    password: ${{ secrets.UNITY_PASSWORD }}
-
-- name: Build AssetBundles for Windows
+  
+- name: Build Asset Bundles
   run: |
-      assetbundlebuilder 2022.3.35f1 "./Assets" "mymod" "./Output" --target windows
-      assetbundlebuilder 2022.3.35f1 "./Assets" "mymod" "./Output" --target linux
-      assetbundlebuilder 2022.3.35f1 "./Assets" "mymod" "./Output" --target mac
+    assetbundlebuilder --bundle-config textures --ci
+    assetbundlebuilder --bundle-config shaders --ci
 ```
+
+## Features
+
+### Platform Support
+
+- **Build Targets**: `windows`, `mac`, `linux`, or `none` for platform-agnostic bundles
+- **Build Restrictions**: Use `build_targets` array to limit which platforms a bundle can be built for
+
+### Asset Management
+
+- **Link Methods**: Choose how assets are linked to Unity project
+    - `copy`: Copy files (safest, slower)
+    - `symlink`: Symbolic links (fast, requires permissions)
+    - `hardlink`: Hard links (fast, same volume only)
+    - `junction`: Directory junctions (Windows, fast)
+- **Pattern Matching**: Include/exclude files with glob patterns
+- **Custom Filenames**: Use variables like `[bundle_name]`, `[target]`, `[date]`
+
+### Unity Integration
+
+- **Auto-Installation**: Automatically installs Unity Hub and Editor if missing (Windows/macOS)
+- **Version Discovery**: Finds Unity installations by version number
+- **Temp Project Caching**: Reuses temp projects for faster rebuilds
+- **Custom Unity Paths**: Override with specific Unity executable path
+
+### CI/CD Features
+
+- **CI Mode**: Disables auto-installation for CI environments
+- **Non-Interactive**: No prompts for automation
+- **Verbosity Control**: Quiet mode for cleaner logs
+- **Clean Builds**: Option to force fresh builds
+
+## Command Line Reference
+
+While configuration files are recommended, all options are available via CLI:
+
+```
+assetbundlebuilder [options] [unity-version] [asset-dir] [bundle-name] [output-dir]
+```
+
+Common options:
+
+- `--config <file>`: Use configuration file
+- `--bundle-config <name>`: Select bundle from config
+- `--target <platform>`: Override build target
+- `--ci`: Enable CI mode
+- `--non-interactive`: Disable prompts
+- `-v, --verbose`: Increase verbosity
+- `-q, --quiet`: Decrease verbosity
+
+Run `assetbundlebuilder --help` for full options list.
 
 ## Troubleshooting
 
 ### Unity Not Found
 
-```bash
-# Try with full path instead
-assetbundlebuilder "/path/to/Unity" "/path/to/assets" "/path/to/output"
+- Ensure Unity Hub is installed in standard location
+- Or specify exact path in config: `unity_path = "C:/Unity/2022.3.35f1/Editor/Unity.exe"`
 
-# Or install Unity in standard location
-```
+### Permission Errors
 
-### Permission Errors (Linux/macOS)
+- Windows: Use `junction` link method instead of `symlink`
+- Linux/macOS: Ensure proper permissions or use `copy` method
 
-```bash
-# Make sure executable has proper permissions
-chmod +x ./AssetBundleBuilder
+### Build Target Issues
 
-# Or use .NET Global Tool instead
-dotnet tool install --global AssetBundleBuilder.GlobalTool
-```
-
-### Invalid Bundle Name
-
-```bash
-# Use a valid bundle name (alphanumeric, dots, underscores)
-assetbundlebuilder 2022.3.35f1 "/path/to/assets" "valid_bundle_name" "/path/to/output"
-```
-
-### Caching and Performance
-
-```bash
-# Default behavior: temp project is cached for faster rebuilds
-assetbundlebuilder 2022.3.35f1 "/path/to/assets" "mybundle" "/path/to/output"
-
-# Force clean build by deleting temp project after build
-assetbundlebuilder 2022.3.35f1 "/path/to/assets" "mybundle" "/path/to/output" --clean-temp
-```
-
-## Uninstallation
-
-### .NET Global Tool
-
-```bash
-dotnet tool uninstall --global CryptikLemur.AssetBundleBuilder
-```
+- Check `build_targets` array in your config doesn't exclude your target
+- Use `build_target = "none"` for platform-agnostic bundles
 
 ## Support
 

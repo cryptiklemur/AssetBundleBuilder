@@ -40,7 +40,7 @@ public class Configuration {
     public string BuildTarget { get; set; } = string.Empty;
 
     // Allowed build targets (if specified, restricts which targets can be built)
-    [Toml("build_targets")] public List<string> BuildTargets { get; set; } = [];
+    [Toml("build_targets")] public List<string> BuildTargets { get; set; } = ["windows", "mac", "linux"];
 
     [Cli("bundle-name", description: "Override bundle name")]
     [Toml("bundle_name_override")]
@@ -285,9 +285,9 @@ public class Configuration {
         if (tomlConfig.Global != null) ApplyTomlSection(config, tomlConfig.Global);
 
         // Apply specific bundle configuration if specified
-        if (!string.IsNullOrEmpty(config.BundleConfigName) && tomlConfig.Bundles.TryGetValue(config.BundleConfigName, out var bundleConfig)) {
+        if (!string.IsNullOrEmpty(config.BundleConfigName) &&
+            tomlConfig.Bundles.TryGetValue(config.BundleConfigName, out var bundleConfig))
             ApplyTomlSection(config, bundleConfig);
-        }
     }
 
     public static void ApplyTomlSection(Configuration config, object tomlSection) {
