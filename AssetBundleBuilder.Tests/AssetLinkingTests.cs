@@ -245,7 +245,35 @@ public class AssetLinkingTests {
         }
         finally {
             if (Directory.Exists(tempSourceDir)) Directory.Delete(tempSourceDir, true);
-            if (Directory.Exists(tempTargetDir)) Directory.Delete(tempTargetDir, true);
+            if (Directory.Exists(tempTargetDir)) {
+                // Special handling for junction cleanup on Windows
+                if (linkMethod == "junction" && RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+                    // Junctions need special removal on Windows
+                    if (Directory.Exists(targetAssetsDir)) {
+                        try {
+                            // Remove junction without recursion
+                            Directory.Delete(targetAssetsDir);
+                        }
+                        catch {
+                            // Fallback to rmdir command if delete fails
+                            using var process = new System.Diagnostics.Process();
+                            process.StartInfo.FileName = "cmd.exe";
+                            process.StartInfo.Arguments = $"/C rmdir \"{targetAssetsDir}\"";
+                            process.StartInfo.UseShellExecute = false;
+                            process.StartInfo.CreateNoWindow = true;
+                            process.Start();
+                            process.WaitForExit();
+                        }
+                    }
+                }
+                
+                try {
+                    Directory.Delete(tempTargetDir, true);
+                }
+                catch {
+                    // If delete still fails, ignore it - it's just test cleanup
+                }
+            }
         }
     }
 }
