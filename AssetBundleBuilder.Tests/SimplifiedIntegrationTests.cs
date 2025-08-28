@@ -25,13 +25,13 @@ public class SimplifiedIntegrationTests : IDisposable {
     [Fact]
     public void CliArguments_BasicUsage_ParsesCorrectly() {
         // Test that basic CLI arguments work
-        var args = new[] { "2022.3.35f1", "Assets", "testbundle", "Output" };
+        var args = new[] { "2022.3.35f1", "Assets", "author.modname", "Output" };
         var config = ArgumentParser.Parse(args);
 
         Assert.NotNull(config);
         Assert.Equal("2022.3.35f1", config.GetUnityVersion());
         Assert.Equal(Path.GetFullPath("Assets"), config.AssetDirectory);
-        Assert.Equal("testbundle", config.BundleName);
+        Assert.Equal("author.modname", config.BundleName);
         Assert.Equal(Path.GetFullPath("Output"), config.OutputDirectory);
     }
 
@@ -39,7 +39,7 @@ public class SimplifiedIntegrationTests : IDisposable {
     public void CliArguments_WithOptions_ParsesCorrectly() {
         // Test CLI with additional options
         var args = new[] {
-            "2022.3.35f1", "Assets", "testbundle", "Output",
+            "2022.3.35f1", "Assets", "author.modname", "Output",
             "--target", "windows",
             "--exclude", "*.tmp",
             "--include", "*.png"
@@ -134,7 +134,7 @@ asset_directory = ""SoundAssets""
         var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
         Directory.CreateDirectory(tempDir);
         _tempDirsToCleanup.Add(tempDir);
-        
+
         var configPath = Path.Combine(tempDir, "test.toml");
         var tomlContent = @"
 [global]
@@ -143,22 +143,22 @@ build_targets = [""windows"", ""linux""]
 
 [bundles.test]
 asset_directory = ""TestAssets""
-bundle_name = ""restricted.bundle""
+bundle_name = ""restricted.test""
 ";
         File.WriteAllText(configPath, tomlContent);
-        
+
         // Test allowed target (windows)
         var args1 = new[] { "--config", configPath, "--bundle-config", "test", "--target", "windows" };
         var config1 = ArgumentParser.Parse(args1);
         Assert.NotNull(config1);
         Assert.True(config1.IsBuildTargetAllowed());
-        
+
         // Test allowed target (linux)
         var args2 = new[] { "--config", configPath, "--bundle-config", "test", "--target", "linux" };
         var config2 = ArgumentParser.Parse(args2);
         Assert.NotNull(config2);
         Assert.True(config2.IsBuildTargetAllowed());
-        
+
         // Test disallowed target (mac)
         var args3 = new[] { "--config", configPath, "--bundle-config", "test", "--target", "mac" };
         var config3 = ArgumentParser.Parse(args3);
@@ -166,26 +166,26 @@ bundle_name = ""restricted.bundle""
         Assert.False(config3.IsBuildTargetAllowed());
         Assert.Contains("not in allowed targets", config3.GetBuildTargetSkipMessage());
     }
-    
+
     [Fact]
     public void TargetlessBuild_NoneTarget_Works() {
         // Test that "none" build target creates targetless bundles
-        var args = new[] { "2022.3.35f1", "Assets", "targetless.bundle", "Output", "--target", "none" };
+        var args = new[] { "2022.3.35f1", "Assets", "targetless.test", "Output", "--target", "none" };
         var config = ArgumentParser.Parse(args);
-        
+
         Assert.NotNull(config);
         Assert.True(config.IsTargetless());
         Assert.Equal("none", config.BuildTarget.ToLower());
         Assert.True(config.IsBuildTargetAllowed());
     }
-    
-    [Fact] 
+
+    [Fact]
     public void TargetlessBuild_WithBuildTargetsRestriction() {
         // Test that "none" is always allowed even with build_targets restriction
         var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
         Directory.CreateDirectory(tempDir);
         _tempDirsToCleanup.Add(tempDir);
-        
+
         var configPath = Path.Combine(tempDir, "test.toml");
         var tomlContent = @"
 [global]
@@ -194,19 +194,19 @@ build_targets = [""windows""]  # Only windows allowed
 
 [bundles.test]
 asset_directory = ""TestAssets""
-bundle_name = ""targetless.bundle""
+bundle_name = ""targetless.test""
 build_target = ""none""  # But this bundle is targetless
 ";
         File.WriteAllText(configPath, tomlContent);
-        
+
         var args = new[] { "--config", configPath, "--bundle-config", "test" };
         var config = ArgumentParser.Parse(args);
-        
+
         Assert.NotNull(config);
         Assert.True(config.IsTargetless());
         Assert.True(config.IsBuildTargetAllowed()); // "none" is always allowed
     }
-    
+
     [Fact]
     public void BuildTargetValidation_AcceptsValidTargets() {
         // Test valid build targets
