@@ -432,7 +432,7 @@ unity_version = ""2022.3.35f1""
 
 [bundles.test]
 asset_directory = ""Assets""
-bundle_name = ""test.bundle""
+bundle_name = ""test.mod""
 targetless = false
 ";
         File.WriteAllText(configPath, tomlContent);
@@ -467,7 +467,7 @@ unity_version = ""2022.3.35f1""
 
 [bundles.test]
 asset_directory = ""Assets""
-bundle_name = ""test.bundle""
+bundle_name = ""test.mod""
 targetless = false
 ";
         File.WriteAllText(configPath, tomlContent);
