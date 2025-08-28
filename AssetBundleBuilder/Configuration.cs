@@ -314,15 +314,22 @@ public class Configuration {
                 // Don't override CLI values with TOML values for certain properties
                 var currentValue = configProp.GetValue(config);
 
-                // Special handling for List<string> properties - merge instead of replace
+                // Special handling for List<string> properties
                 if (configProp.PropertyType == typeof(List<string>) && value is List<string> newList) {
-                    var currentList = currentValue as List<string> ?? [];
-                    // Only apply if current list is empty (default) or we're merging
-                    if (currentList.Count == 0) configProp.SetValue(config, newList);
+                    // For BuildTargets, replace the default list entirely (it's a restriction, not additive)
+                    if (configProp.Name == nameof(BuildTargets)) {
+                        configProp.SetValue(config, newList);
+                    }
                     else {
-                        // Merge lists - add items from TOML that aren't already in the list
-                        foreach (var item in newList.Where(item => !currentList.Contains(item)))
-                            currentList.Add(item);
+                        // For other lists, merge instead of replace
+                        var currentList = currentValue as List<string> ?? [];
+                        // Only apply if current list is empty (default) or we're merging
+                        if (currentList.Count == 0) configProp.SetValue(config, newList);
+                        else {
+                            // Merge lists - add items from TOML that aren't already in the list
+                            foreach (var item in newList.Where(item => !currentList.Contains(item)))
+                                currentList.Add(item);
+                        }
                     }
                 }
                 else {
@@ -421,8 +428,8 @@ public class Configuration {
 
         // "none" is always allowed for targetless builds
         return IsTargetless() ||
-               // Check if the current build target is in the allowed list
-               BuildTargets.Contains(BuildTarget.ToLower());
+               // Check if the current build target is in the allowed list (case-insensitive)
+               BuildTargets.Any(t => string.Equals(t, BuildTarget, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>

@@ -25,7 +25,7 @@ public class SimplifiedIntegrationTests : IDisposable {
     [Fact]
     public void CliArguments_BasicUsage_ParsesCorrectly() {
         // Test that basic CLI arguments work
-        var args = new[] { "2022.3.35f1", "Assets", "author.modname", "Output" };
+        var args = new[] { "2022.3.35f1", "Assets", "author.modname", "Output", "--target", "windows" };
         var config = ArgumentParser.Parse(args);
 
         Assert.NotNull(config);
@@ -91,6 +91,7 @@ bundle_name = ""author.textures""
         var tomlContent = @"
 [global]
 unity_version = ""2022.3.35f1""
+build_target = ""windows""
 
 [bundles.textures]
 bundle_name = ""textures""
@@ -113,7 +114,7 @@ asset_directory = ""SoundAssets""
     [Fact]
     public void InvalidBundleName_ThrowsException() {
         // Test that forbidden bundle names are rejected
-        var args = new[] { "2022.3.35f1", "Assets", "test.bundle", "Output" };
+        var args = new[] { "2022.3.35f1", "Assets", "test.bundle", "Output", "--target", "windows" };
 
         var exception = Assert.Throws<ArgumentException>(() => ArgumentParser.Parse(args));
         Assert.Contains("cannot end with .framework or .bundle", exception.Message);
@@ -230,7 +231,7 @@ build_target = ""none""  # But this bundle is targetless
         };
 
         foreach (var (flag, expected) in testCases) {
-            var args = new[] { "2022.3.35f1", "Assets", "test", "Output", flag };
+            var args = new[] { "2022.3.35f1", "Assets", "test", "Output", "--target", "windows", flag };
             var config = ArgumentParser.Parse(args);
             Assert.NotNull(config);
             Assert.Equal(expected, config.GetVerbosity());
@@ -248,7 +249,7 @@ build_target = ""none""  # But this bundle is targetless
         };
 
         foreach (var (flag, expected) in linkMethods) {
-            var args = new[] { "2022.3.35f1", "Assets", "test", "Output", flag };
+            var args = new[] { "2022.3.35f1", "Assets", "test", "Output", "--target", "windows", flag };
             var config = ArgumentParser.Parse(args);
             Assert.NotNull(config);
             Assert.Equal(expected, config.GetLinkMethod());
