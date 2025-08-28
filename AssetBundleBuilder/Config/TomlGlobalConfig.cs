@@ -7,6 +7,7 @@ public class TomlGlobalConfig {
     [TomlProperty("unity_path")] public string? UnityPath { get; set; }
     [TomlProperty("output_directory")] public string? OutputDirectory { get; set; }
     [TomlProperty("build_target")] public string? BuildTarget { get; set; }
+    [TomlProperty("build_targets")] public List<string>? BuildTargets { get; set; }
     [TomlProperty("temp_project_path")] public string? TempProjectPath { get; set; }
     [TomlProperty("clean_temp_project")] public bool? CleanTempProject { get; set; }
     [TomlProperty("link_method")] public string? LinkMethod { get; set; }

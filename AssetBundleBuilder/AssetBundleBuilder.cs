@@ -130,6 +130,7 @@ public static class Program {
 
         // Determine if we're using auto-detected target (no platform suffix) or explicit target
         var isAutoTarget = string.IsNullOrEmpty(config.BuildTarget);
+        var isTargetless = config.IsTargetless();
 
         // If no build target specified, detect current OS and don't append platform suffix
         if (isAutoTarget) {
@@ -137,10 +138,18 @@ public static class Program {
             Logger.Information("No target specified, using current OS: {BuildTarget} (no platform suffix)",
                 config.BuildTarget);
         }
-        else Logger.Information("Using specified build target: {BuildTarget}", config.BuildTarget);
+        else if (isTargetless) {
+            Logger.Information("Building targetless (platform-agnostic) bundle");
+        }
+        else {
+            Logger.Information("Using specified build target: {BuildTarget}", config.BuildTarget);
+        }
 
         // Convert user-friendly build target to Unity command line format
-        var unityBuildTarget = ConvertBuildTarget(config.BuildTarget);
+        // For targetless builds, use the current OS as the build platform but mark as targetless
+        var unityBuildTarget = isTargetless 
+            ? ConvertBuildTarget(DetectCurrentOS()) 
+            : ConvertBuildTarget(config.BuildTarget);
         Logger.Information("Unity build target: {BuildTarget}", unityBuildTarget);
 
         // Create temporary Unity project if not specified
@@ -172,6 +181,13 @@ public static class Program {
         Logger.Debug("Output Directory: {OutputDirectory}", config.GetOutputDirectory());
         Logger.Debug("Output Format: {OutputFormat}", config.Filename);
         Logger.Debug("Build Target: {BuildTarget}", config.BuildTarget);
+        
+        // Check if the build target is allowed
+        if (!config.IsBuildTargetAllowed()) {
+            var skipMessage = config.GetBuildTargetSkipMessage();
+            Logger.Warning(skipMessage);
+            return 0; // Return success but skip the build
+        }
 
         // Manage Unity Hub if not in CI mode
         var wasHubRunning = false;
@@ -223,7 +239,7 @@ public static class Program {
                 "-assetDirectory",
                 config.AssetDirectory,
                 "-noPlatformSuffix",
-                isAutoTarget ? "true" : "false"
+                (isAutoTarget || isTargetless) ? "true" : "false"
             ]);
 
             // Add custom filename format if provided

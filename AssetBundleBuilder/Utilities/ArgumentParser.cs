@@ -81,11 +81,9 @@ public static class ArgumentParser {
         }
 
         // Validate build target
-        if (!string.IsNullOrEmpty(config.BuildTarget)) {
-            var validTargets = new[] { "", "windows", "mac", "linux" };
-            if (!validTargets.Contains(config.BuildTarget))
-                errors.Add($"Invalid build target: {config.BuildTarget}. Valid values are: windows, mac, linux");
-        }
+        var validTargets = new[] { "windows", "mac", "linux", "none" };
+        if (string.IsNullOrEmpty(config.BuildTarget) || !validTargets.Contains(config.BuildTarget))
+            errors.Add($"Invalid build target: \"{config.BuildTarget}\". Valid values are: windows, mac, linux, none");
 
         // Check link method conflicts
         var linkMethodCount = 0;

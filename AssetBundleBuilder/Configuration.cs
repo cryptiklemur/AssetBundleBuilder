@@ -39,6 +39,9 @@ public class Configuration {
     [Toml("build_target")]
     public string BuildTarget { get; set; } = string.Empty;
 
+    // Allowed build targets (if specified, restricts which targets can be built)
+    [Toml("build_targets")] public List<string> BuildTargets { get; set; } = [];
+
     [Cli("bundle-name", description: "Override bundle name")]
     [Toml("bundle_name_override")]
     public string? BundleNameOverride { get; set; }
@@ -282,8 +285,7 @@ public class Configuration {
         if (tomlConfig.Global != null) ApplyTomlSection(config, tomlConfig.Global);
 
         // Apply specific bundle configuration if specified
-        if (!string.IsNullOrEmpty(config.BundleConfigName) && tomlConfig.Bundles.ContainsKey(config.BundleConfigName)) {
-            var bundleConfig = tomlConfig.Bundles[config.BundleConfigName];
+        if (!string.IsNullOrEmpty(config.BundleConfigName) && tomlConfig.Bundles.TryGetValue(config.BundleConfigName, out var bundleConfig)) {
             ApplyTomlSection(config, bundleConfig);
         }
     }
@@ -311,28 +313,26 @@ public class Configuration {
 
                 // Don't override CLI values with TOML values for certain properties
                 var currentValue = configProp.GetValue(config);
-                
+
                 // Special handling for List<string> properties - merge instead of replace
                 if (configProp.PropertyType == typeof(List<string>) && value is List<string> newList) {
                     var currentList = currentValue as List<string> ?? [];
                     // Only apply if current list is empty (default) or we're merging
-                    if (currentList.Count == 0) {
-                        configProp.SetValue(config, newList);
-                    } else {
+                    if (currentList.Count == 0) configProp.SetValue(config, newList);
+                    else {
                         // Merge lists - add items from TOML that aren't already in the list
-                        foreach (var item in newList) {
-                            if (!currentList.Contains(item)) {
-                                currentList.Add(item);
-                            }
-                        }
+                        foreach (var item in newList.Where(item => !currentList.Contains(item)))
+                            currentList.Add(item);
                     }
-                } else {
+                }
+                else {
                     // For non-list properties, check if current value is default
                     var isDefault = IsDefaultValue(currentValue);
                     if (currentValue != null && !isDefault) continue; // CLI value takes precedence
-                    
+
                     configProp.SetValue(config, value);
                 }
+
                 break;
             }
         }
@@ -400,6 +400,39 @@ public class Configuration {
         return Path.IsPathRooted(OutputDirectory)
             ? OutputDirectory
             : Path.GetFullPath(OutputDirectory);
+    }
+
+    /// <summary>
+    ///     Check if this is a targetless (platform-agnostic) build
+    /// </summary>
+    public bool IsTargetless() {
+        return BuildTarget.Equals("none", StringComparison.CurrentCultureIgnoreCase);
+    }
+
+    /// <summary>
+    ///     Check if the current build target is allowed based on build_targets configuration
+    /// </summary>
+    public bool IsBuildTargetAllowed() {
+        // If no build_targets specified, all targets are allowed
+        if (BuildTargets.Count == 0) return true;
+
+        // If no specific build target is set, it's allowed (will use default)
+        if (string.IsNullOrEmpty(BuildTarget)) return true;
+
+        // "none" is always allowed for targetless builds
+        return IsTargetless() ||
+               // Check if the current build target is in the allowed list
+               BuildTargets.Contains(BuildTarget.ToLower());
+    }
+
+    /// <summary>
+    ///     Get a message explaining why the build target was skipped
+    /// </summary>
+    public string GetBuildTargetSkipMessage() {
+        if (BuildTargets.Count == 0) return string.Empty;
+
+        var allowedTargets = string.Join(", ", BuildTargets);
+        return $"Skipping bundle build: Target '{BuildTarget}' is not in allowed targets [{allowedTargets}]";
     }
 
     /// <summary>
