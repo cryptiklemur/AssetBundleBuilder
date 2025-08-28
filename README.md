@@ -21,11 +21,12 @@ link_method = "junction"  # or "copy", "symlink", "hardlink"
 [bundles.textures]
 filename = "resource_[bundle_name]_textures_[target]"
 exclude_patterns = ["*.shader"]
-build_target = "none" # will build a suffix-less asset bundle for every platform
+targetless = true  # No platform suffix - creates single bundle for all platforms
 
 [bundles.shaders] # specify `--target windows` (or mac or linux) when running assetbundlebuilder to build for each platform
 filename = "resource_[bundle_name]_shaders_[target]"
 include_patterns = ["*.shader"]
+targetless = false  # Platform-specific - creates separate bundle per platform
 ```
 
 Then build your bundles:
@@ -76,17 +77,14 @@ The TOML configuration file allows you to define multiple asset bundles with dif
 unity_version = "2022.3.35f1"        # Unity version to use
 unity_path = "/path/to/Unity.exe"    # Or specify exact path
 output_directory = "Output"          # Default output directory
-build_target = "windows"             # Default build target
 build_targets = ["windows", "linux"] # Restrict allowed targets
 temp_project_path = "/tmp/unity"     # Custom temp directory
 clean_temp_project = false           # Clean temp project after building. Disabled by default for caching
 link_method = "copy"                 # How to link assets: copy/symlink/hardlink/junction
 log_file = "unity.log"               # Unity log output
-ci_mode = false                      # Disable Unity auto-installation
-non_interactive = false              # No prompts
-verbosity = "verbose"                # Output verbosity: quiet/normal/verbose/debug
 exclude_patterns = ["*.meta", "*.tmp"] # Files to exclude
 include_patterns = ["*.png", "*.wav"]  # Files to include
+targetless = true                       # Default for bundles: no platform suffix
 ```
 
 ### Bundle Configuration
@@ -97,9 +95,9 @@ description = "My custom asset bundle"
 asset_directory = "Assets/MyBundle"
 bundle_name = "author.mybundle"
 output_directory = "CustomOutput"    # Override global output
-build_target = "none"                # Platform-agnostic bundle
 build_targets = ["windows"]          # Only allow specific targets
 filename = "resource_[bundle_name]_[target]" # Custom filename format
+targetless = false                      # Platform-specific bundle (default: true)
 
 # Bundle-specific patterns
 exclude_patterns = ["*.backup"]
@@ -118,7 +116,6 @@ link_method = "junction"
 [bundles.core]
 asset_directory = "Core/Assets"
 bundle_name = "mymod.core"
-build_target = "none"  # Platform-agnostic
 
 [bundles.windows_only]
 asset_directory = "WindowsAssets"
@@ -209,7 +206,7 @@ Run `assetbundlebuilder --help` for full options list.
 ### Build Target Issues
 
 - Check `build_targets` array in your config doesn't exclude your target
-- Use `build_target = "none"` for platform-agnostic bundles
+- Use `--target` CLI flag to specify build target
 
 ## Support
 

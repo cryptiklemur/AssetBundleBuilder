@@ -117,6 +117,10 @@ public class Configuration {
     [Cli("list-bundles", description: "List available bundles in config")]
     public bool ListBundles { get; set; }
 
+    /// <summary>Indicates if the bundle should not have a platform suffix (targetless bundle)</summary>
+    [Toml("targetless")]
+    public bool Targetless { get; set; } = true;
+
     // Computed properties
     public VerbosityLevel GetVerbosity() {
         if (Quiet) return VerbosityLevel.Quiet;
@@ -144,135 +148,6 @@ public class Configuration {
         return LinkMethod;
     }
 
-    /// <summary>
-    ///     Parse command line arguments into configuration
-    /// </summary>
-    public static Configuration ParseArguments(string[] args) {
-        var config = new Configuration();
-
-        // Check for auto-config file first
-        var autoConfigPath = Path.Combine(Directory.GetCurrentDirectory(), ".assetbundler.toml");
-        if (File.Exists(autoConfigPath) && !args.Contains("--config")) config.ConfigFile = autoConfigPath;
-
-        // Parse arguments
-        var positionalIndex = 0;
-        var positionalProperties = GetPositionalProperties();
-
-        for (var i = 0; i < args.Length; i++) {
-            var arg = args[i];
-
-            if (arg.StartsWith("--")) {
-                // Long argument
-                var propertyName = arg.Substring(2);
-                if (TrySetPropertyByCliName(config, propertyName, args, ref i)) {
-                }
-            }
-            else if (arg.StartsWith("-") && !arg.StartsWith("--")) {
-                // Short argument
-                var shortName = arg.Substring(1);
-
-                // Handle combined flags like -vv
-                if (shortName == "vv") config.Debug = true;
-                else if (shortName.Length == 1) TrySetPropertyByShortName(config, shortName, args, ref i);
-            }
-            else {
-                // Positional argument
-                if (positionalIndex < positionalProperties.Count) {
-                    var prop = positionalProperties[positionalIndex];
-                    SetPropertyValue(config, prop, arg);
-                    positionalIndex++;
-                }
-            }
-        }
-
-        // Apply TOML configuration if specified
-        if (!string.IsNullOrEmpty(config.ConfigFile)) ApplyTomlConfiguration(config);
-
-        return config;
-    }
-
-    private static List<PropertyInfo> GetPositionalProperties() {
-        return typeof(Configuration)
-            .GetProperties()
-            .Where(p => {
-                var attr = p.GetCustomAttribute<CliAttribute>();
-                return attr?.IsPositional == true;
-            })
-            .OrderBy(p => p.GetCustomAttribute<CliAttribute>()!.Position)
-            .ToList();
-    }
-
-    private static bool TrySetPropertyByCliName(Configuration config, string cliName, string[] args, ref int index) {
-        var properties = typeof(Configuration).GetProperties();
-
-        foreach (var prop in properties) {
-            var attr = prop.GetCustomAttribute<CliAttribute>();
-            if (attr?.LongName == cliName) {
-                if (prop.PropertyType == typeof(bool)) {
-                    prop.SetValue(config, true);
-                    return true;
-                }
-
-                if (index + 1 < args.Length && !args[index + 1].StartsWith("-")) {
-                    index++;
-                    SetPropertyValue(config, prop, args[index]);
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private static bool
-        TrySetPropertyByShortName(Configuration config, string shortName, string[] args, ref int index) {
-        var properties = typeof(Configuration).GetProperties();
-
-        foreach (var prop in properties) {
-            var attr = prop.GetCustomAttribute<CliAttribute>();
-            if (attr?.ShortName == shortName) {
-                if (prop.PropertyType == typeof(bool)) {
-                    prop.SetValue(config, true);
-                    return true;
-                }
-
-                if (index + 1 < args.Length && !args[index + 1].StartsWith("-")) {
-                    index++;
-                    SetPropertyValue(config, prop, args[index]);
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private static void SetPropertyValue(Configuration config, PropertyInfo prop, string value) {
-        if (prop.PropertyType == typeof(string)) {
-            // Handle path resolution for directory/file properties
-            if (prop.Name == "UnityVersionOrPath") {
-                // Only convert to full path if it looks like a file path (contains path separator or exists as file)
-                if (!string.IsNullOrEmpty(value) && !value.StartsWith("--") &&
-                    (value.Contains(Path.DirectorySeparatorChar) || value.Contains(Path.AltDirectorySeparatorChar) ||
-                     File.Exists(value)))
-                    value = Path.GetFullPath(value);
-            }
-            else if (prop.Name != "Filename" && (prop.Name.Contains("Directory") || prop.Name.Contains("Path") ||
-                                                 prop.Name.Contains("File"))) {
-                // Filename is not a path but a format template, so exclude it from path resolution
-                if (!string.IsNullOrEmpty(value) && !value.StartsWith("--"))
-                    value = Path.GetFullPath(value);
-            }
-
-            prop.SetValue(config, value);
-        }
-        else if (prop.PropertyType == typeof(bool)) prop.SetValue(config, bool.Parse(value));
-        else if (prop.PropertyType == typeof(List<string>)) {
-            var list = prop.GetValue(config) as List<string> ?? [];
-            list.Add(value);
-            prop.SetValue(config, list);
-        }
-    }
 
     private static void ApplyTomlConfiguration(Configuration config) {
         if (!File.Exists(config.ConfigFile))
@@ -317,9 +192,7 @@ public class Configuration {
                 // Special handling for List<string> properties
                 if (configProp.PropertyType == typeof(List<string>) && value is List<string> newList) {
                     // For BuildTargets, replace the default list entirely (it's a restriction, not additive)
-                    if (configProp.Name == nameof(BuildTargets)) {
-                        configProp.SetValue(config, newList);
-                    }
+                    if (configProp.Name == nameof(BuildTargets)) configProp.SetValue(config, newList);
                     else {
                         // For other lists, merge instead of replace
                         var currentList = currentValue as List<string> ?? [];
@@ -348,7 +221,7 @@ public class Configuration {
     private static bool IsDefaultValue(object? value) {
         return value switch {
             string s => string.IsNullOrEmpty(s),
-            bool b => !b,
+            bool b => true, // Always consider bool values as "default" so TOML values are applied
             List<string> list => list.Count == 0,
             _ => false
         };
@@ -413,7 +286,8 @@ public class Configuration {
     ///     Check if this is a targetless (platform-agnostic) build
     /// </summary>
     public bool IsTargetless() {
-        return BuildTarget.Equals("none", StringComparison.CurrentCultureIgnoreCase);
+        // A bundle is targetless if explicitly set to targetless=true AND the target is "none"
+        return Targetless && BuildTarget.Equals("none", StringComparison.CurrentCultureIgnoreCase);
     }
 
     /// <summary>
@@ -440,55 +314,5 @@ public class Configuration {
 
         var allowedTargets = string.Join(", ", BuildTargets);
         return $"Skipping bundle build: Target '{BuildTarget}' is not in allowed targets [{allowedTargets}]";
-    }
-
-    /// <summary>
-    ///     Generate help text from attributes
-    /// </summary>
-    public static string GenerateHelp() {
-        var help = """
-                   AssetBundleBuilder - Unity Asset Bundle Builder for RimWorld Mods
-
-                   Usage: AssetBundleBuilder [unity-version-or-path] <asset-directory> <bundle-name> [output-directory] [options]
-
-                   Arguments:
-
-                   """;
-
-        // Add positional arguments
-        var positionalProps = GetPositionalProperties();
-        foreach (var prop in positionalProps) {
-            var attr = prop.GetCustomAttribute<CliAttribute>()!;
-            var name = prop.Name.ToLower().Replace("_", "-");
-            help += $"  <{name}>".PadRight(30) + (attr.Description ?? "") + "\n";
-        }
-
-        help += "\nOptions:\n";
-
-        // Add named arguments
-        var namedProps = typeof(Configuration)
-            .GetProperties()
-            .Where(p => {
-                var attr = p.GetCustomAttribute<CliAttribute>();
-                return attr != null && !attr.IsPositional;
-            })
-            .OrderBy(p => p.GetCustomAttribute<CliAttribute>()!.LongName);
-
-        foreach (var prop in namedProps) {
-            var attr = prop.GetCustomAttribute<CliAttribute>()!;
-            var line = "  ";
-
-            if (!string.IsNullOrEmpty(attr.ShortName)) line += $"-{attr.ShortName}, ";
-            else line += "    ";
-
-            line += $"--{attr.LongName}";
-
-            if (prop.PropertyType != typeof(bool)) line += " <value>";
-
-            line = line.PadRight(30) + (attr.Description ?? "");
-            help += line + "\n";
-        }
-
-        return help;
     }
 }

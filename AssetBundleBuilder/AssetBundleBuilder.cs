@@ -51,31 +51,14 @@ public static class Program {
     }
 
     private static int Main(string[] args) {
-        // Special commands are handled in the ArgumentParser now
-
-        if (args.Length < 2) {
-            ShowHelp();
-            return args.Length == 0 ? 0 : 1;
-        }
-
-        var config = ArgumentParser.Parse(args);
-        if (config == null) {
-            Console.WriteLine("Error: Invalid arguments provided.");
-            ShowHelp();
-            return 1;
-        }
-
-        if (string.IsNullOrEmpty(config.LinkMethod)) config.LinkMethod = "copy";
-
-        // Initialize global config and logging
-        Config = config;
-        InitializeLogging(config.GetVerbosity());
-
-        return BuildAssetBundle(config);
+        // Use the new System.CommandLine parser
+        return CommandLineParser.ParseAndExecuteAsync(args).GetAwaiter().GetResult();
     }
 
 
     public static int BuildAssetBundle(Configuration config) {
+        // Initialize global config
+        Config = config;
         Logger.Information("Starting Unity Asset Bundle Builder");
 
         // If unity version is specified, try to find the Unity executable
@@ -138,17 +121,13 @@ public static class Program {
             Logger.Information("No target specified, using current OS: {BuildTarget} (no platform suffix)",
                 config.BuildTarget);
         }
-        else if (isTargetless) {
-            Logger.Information("Building targetless (platform-agnostic) bundle");
-        }
-        else {
-            Logger.Information("Using specified build target: {BuildTarget}", config.BuildTarget);
-        }
+        else if (isTargetless) Logger.Information("Building targetless (platform-agnostic) bundle");
+        else Logger.Information("Using specified build target: {BuildTarget}", config.BuildTarget);
 
         // Convert user-friendly build target to Unity command line format
         // For targetless builds, use the current OS as the build platform but mark as targetless
-        var unityBuildTarget = isTargetless 
-            ? ConvertBuildTarget(DetectCurrentOS()) 
+        var unityBuildTarget = isTargetless
+            ? ConvertBuildTarget(DetectCurrentOS())
             : ConvertBuildTarget(config.BuildTarget);
         Logger.Information("Unity build target: {BuildTarget}", unityBuildTarget);
 
@@ -181,7 +160,7 @@ public static class Program {
         Logger.Debug("Output Directory: {OutputDirectory}", config.GetOutputDirectory());
         Logger.Debug("Output Format: {OutputFormat}", config.Filename);
         Logger.Debug("Build Target: {BuildTarget}", config.BuildTarget);
-        
+
         // Check if the build target is allowed
         if (!config.IsBuildTargetAllowed()) {
             var skipMessage = config.GetBuildTargetSkipMessage();
@@ -239,7 +218,7 @@ public static class Program {
                 "-assetDirectory",
                 config.AssetDirectory,
                 "-noPlatformSuffix",
-                (isAutoTarget || isTargetless) ? "true" : "false"
+                isAutoTarget || isTargetless ? "true" : "false"
             ]);
 
             // Add custom filename format if provided
@@ -326,9 +305,6 @@ public static class Program {
         }
     }
 
-    private static void ShowHelp() {
-        Console.WriteLine(Configuration.GenerateHelp());
-    }
 
     private static void CreateUnityProject(string projectPath, string assetDirectory, string bundleName,
         string linkMethod) {

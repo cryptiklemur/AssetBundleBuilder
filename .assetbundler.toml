@@ -3,9 +3,7 @@
 
 [global]
 unity_version = "2022.3.35f1"
-build_target = "windows"
 exclude_patterns = ["*.tmp", "backup/*", "*.meta"]
-verbosity = "verbose"
 
 [bundles.textures]
 description = "All texture assets for the mod"
@@ -13,13 +11,15 @@ asset_directory = "TestAssets/"
 bundle_name = "author.textures"
 include_patterns = ["*.png", "*.jpg", "*.jpeg"]
 exclude_patterns = ["*.backup"]
+targetless = true
 
 [bundles.sounds]
 description = "Audio assets including music and effects"
 asset_directory = "TestAssets/"
 bundle_name = "author.sounds"
 include_patterns = ["*.wav", "*.ogg", "*.mp3"]
-build_target = "linux"  # Override global setting for this bundle
+targetless = false
+# Bundle-specific configuration overrides global settings
 
 [bundles.everything]
 description = "Complete asset bundle with all content"
