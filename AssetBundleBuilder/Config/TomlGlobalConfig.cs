@@ -5,6 +5,7 @@ namespace CryptikLemur.AssetBundleBuilder.Config;
 public class TomlGlobalConfig {
     [TomlProperty("unity_version")] public string? UnityVersion { get; set; }
     [TomlProperty("unity_path")] public string? UnityPath { get; set; }
+    [TomlProperty("asset_directory")] public string? AssetDirectory { get; set; }
     [TomlProperty("output_directory")] public string? OutputDirectory { get; set; }
     [TomlProperty("build_targets")] public List<string>? BuildTargets { get; set; }
     [TomlProperty("temp_project_path")] public string? TempProjectPath { get; set; }
