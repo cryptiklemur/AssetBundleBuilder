@@ -44,12 +44,14 @@ public class SimplifiedIntegrationTests : IDisposable {
             var quietOption = new Option<bool>(aliases: ["-q", "--quiet"]);
             var verboseOption = new Option<bool>(aliases: ["-v", "--verbose"]);
             var debugOption = new Option<bool>(aliases: ["-vv", "--debug"]);
+            var dumpConfigOption = new Option<string?>("--dump-config");
             
             rootCommand.AddOption(configOption);
             rootCommand.AddOption(targetOption);
             rootCommand.AddOption(quietOption);
             rootCommand.AddOption(verboseOption);
             rootCommand.AddOption(debugOption);
+            rootCommand.AddOption(dumpConfigOption);
             
             var parseResult = rootCommand.Parse(args);
             
@@ -83,12 +85,16 @@ public class SimplifiedIntegrationTests : IDisposable {
             config.Quiet = parseResult.GetValueForOption(quietOption);
             config.Verbose = parseResult.GetValueForOption(verboseOption);
             config.Debug = parseResult.GetValueForOption(debugOption);
+            config.DumpConfig = parseResult.GetValueForOption(dumpConfigOption);
             
             // Load TOML configuration if specified
             if (!string.IsNullOrEmpty(config.ConfigFile)) {
                 try {
                     var tomlContent = File.ReadAllText(config.ConfigFile);
                     var tomlConfig = Tomlet.TomletMain.To<CryptikLemur.AssetBundleBuilder.Config.TomlConfiguration>(tomlContent);
+                    
+                    // Store original TOML config for serialization
+                    config.OriginalTomlConfig = tomlConfig;
                     
                     if (tomlConfig.Global != null) {
                         Configuration.ApplyTomlSection(config, tomlConfig.Global);
@@ -480,6 +486,65 @@ targetless = false
         Assert.False(config.Targetless);
         Assert.Equal("windows", config.BuildTarget);
         Assert.False(config.IsTargetless());
+    }
+
+    [Fact]
+    public void DumpConfig_JsonFormat_OutputsValidJson() {
+        var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(tempDir);
+        _tempDirsToCleanup.Add(tempDir);
+
+        var configPath = Path.Combine(tempDir, "test.toml");
+        var tomlContent = @"
+[global]
+unity_version = ""2022.3.35f1""
+
+[bundles.test]
+asset_directory = ""Assets""
+bundle_name = ""test.mod""
+";
+        File.WriteAllText(configPath, tomlContent);
+
+        var args = new[] { "--config", configPath, "--dump-config", "json" };
+        var config = ParseArgsForTestWithoutValidation(args);
+
+        Assert.NotNull(config);
+        Assert.Equal("json", config.DumpConfig);
+        
+        // Test JSON serialization doesn't throw
+        var json = config.ToJson();
+        Assert.NotNull(json);
+        Assert.Contains("test.mod", json);
+    }
+
+    [Fact]
+    public void DumpConfig_TomlFormat_OutputsValidToml() {
+        var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(tempDir);
+        _tempDirsToCleanup.Add(tempDir);
+
+        var configPath = Path.Combine(tempDir, "test.toml");
+        var tomlContent = @"
+[global]
+unity_version = ""2022.3.35f1""
+
+[bundles.test]
+asset_directory = ""Assets""
+bundle_name = ""test.mod""
+";
+        File.WriteAllText(configPath, tomlContent);
+
+        var args = new[] { "--config", configPath, "--dump-config", "toml" };
+        var config = ParseArgsForTestWithoutValidation(args);
+
+        Assert.NotNull(config);
+        Assert.Equal("toml", config.DumpConfig);
+        
+        // Test TOML serialization doesn't throw and contains original data
+        var toml = config.ToToml();
+        Assert.NotNull(toml);
+        Assert.Contains("test.mod", toml);
+        Assert.Contains("2022.3.35f1", toml);
     }
 
     // End-to-end test would go here but requires Unity to be installed

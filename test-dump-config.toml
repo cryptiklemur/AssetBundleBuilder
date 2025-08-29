@@ -1,0 +1,8 @@
+[global]
+unity_version = "2022.3.35f1"
+output_directory = "out"
+
+[bundles.test]
+asset_directory = "Assets"
+bundle_name = "test.mod"
+targetless = false

@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using CryptikLemur.AssetBundleBuilder.Attributes;
 using CryptikLemur.AssetBundleBuilder.Config;
+using Newtonsoft.Json;
 using Tomlet;
 
 namespace CryptikLemur.AssetBundleBuilder;
@@ -117,9 +118,15 @@ public class Configuration {
     [Cli("list-bundles", description: "List available bundles in config")]
     public bool ListBundles { get; set; }
 
+    [Cli("dump-config", description: "Dump resolved configuration in specified format")]
+    public string? DumpConfig { get; set; }
+
     /// <summary>Indicates if the bundle should not have a platform suffix (targetless bundle)</summary>
     [Toml("targetless")]
     public bool Targetless { get; set; } = true;
+
+    // Internal storage for original TOML data
+    [JsonIgnore] public TomlConfiguration? OriginalTomlConfig { get; set; }
 
     // Computed properties
     public VerbosityLevel GetVerbosity() {
@@ -314,5 +321,75 @@ public class Configuration {
 
         var allowedTargets = string.Join(", ", BuildTargets);
         return $"Skipping bundle build: Target '{BuildTarget}' is not in allowed targets [{allowedTargets}]";
+    }
+
+    /// <summary>
+    ///     Serialize configuration to JSON format matching TOML structure
+    /// </summary>
+    public string ToJson() {
+        // If we have original TOML config, serialize that for consistency
+        if (OriginalTomlConfig != null) return JsonConvert.SerializeObject(OriginalTomlConfig, Formatting.Indented);
+
+        // Fallback: create structure matching TOML format
+        var jsonStructure = new {
+            global = new {
+                unity_version = GetUnityVersion(),
+                unity_path = GetUnityPath(),
+                output_directory = GetOutputDirectory(),
+                build_targets = BuildTargets,
+                temp_project_path = TempProjectPath,
+                clean_temp_project = CleanTempProject,
+                link_method = GetLinkMethod(),
+                log_file = LogFile,
+                exclude_patterns = ExcludePatterns,
+                include_patterns = IncludePatterns,
+                filename = Filename,
+                targetless = Targetless
+            },
+            bundles = new Dictionary<string, object> {
+                [BundleConfigName ?? "default"] = new {
+                    asset_directory = AssetDirectory,
+                    bundle_name = GetBundleName(),
+                    description = ""
+                }
+            }
+        };
+
+        return JsonConvert.SerializeObject(jsonStructure, Formatting.Indented);
+    }
+
+    /// <summary>
+    ///     Serialize configuration to TOML format using original parsed data
+    /// </summary>
+    public string ToToml() {
+        if (OriginalTomlConfig != null) return TomletMain.TomlStringFrom(OriginalTomlConfig);
+
+        // Fallback: create minimal TOML structure if no original data
+        var fallbackConfig = new TomlConfiguration {
+            Global = new TomlGlobalConfig {
+                UnityVersion = GetUnityVersion(),
+                UnityPath = GetUnityPath(),
+                OutputDirectory = GetOutputDirectory(),
+                BuildTargets = BuildTargets,
+                TempProjectPath = TempProjectPath,
+                CleanTempProject = CleanTempProject,
+                LinkMethod = GetLinkMethod(),
+                LogFile = LogFile,
+                ExcludePatterns = ExcludePatterns,
+                IncludePatterns = IncludePatterns,
+                Filename = Filename,
+                Targetless = Targetless
+            },
+            Bundles = new Dictionary<string, TomlBundleConfig> {
+                [BundleConfigName ?? "default"] = new TomlBundleConfig {
+                    AssetDirectory = AssetDirectory,
+                    BundleName = GetBundleName(),
+                    Description = "",
+                    Targetless = Targetless
+                }
+            }
+        };
+
+        return TomletMain.TomlStringFrom(fallbackConfig);
     }
 }

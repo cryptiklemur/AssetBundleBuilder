@@ -61,6 +61,10 @@ public static class CommandLineParser {
             ["--list-bundles"],
             "List available bundles in config file");
 
+        var dumpConfigOption = new Option<string?>(
+            ["--dump-config"],
+            "Dump resolved configuration in specified format (json|toml)");
+
         // Add all arguments and options to root command
         rootCommand.AddArgument(bundleConfigArg);
 
@@ -72,6 +76,7 @@ public static class CommandLineParser {
         rootCommand.AddOption(ciOption);
         rootCommand.AddOption(nonInteractiveOption);
         rootCommand.AddOption(listBundlesOption);
+        rootCommand.AddOption(dumpConfigOption);
 
         // Set the handler
         rootCommand.SetHandler(context => {
@@ -105,6 +110,12 @@ public static class CommandLineParser {
             // Handle special commands first, before validation
             if (config.ListBundles) {
                 ListBundlesInConfig(config.ConfigFile);
+                context.ExitCode = 0;
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(config.DumpConfig)) {
+                DumpConfigInFormat(config, config.DumpConfig);
                 context.ExitCode = 0;
                 return;
             }
@@ -148,6 +159,7 @@ public static class CommandLineParser {
         config.CiMode = parseResult.GetValue<bool>("--ci");
         config.NonInteractive = parseResult.GetValue<bool>("--non-interactive");
         config.ListBundles = parseResult.GetValue<bool>("--list-bundles");
+        config.DumpConfig = parseResult.GetValue<string?>("--dump-config");
 
 
         // Load TOML configuration if specified
@@ -155,6 +167,9 @@ public static class CommandLineParser {
             try {
                 var tomlContent = File.ReadAllText(config.ConfigFile);
                 var tomlConfig = TomletMain.To<TomlConfiguration>(tomlContent);
+
+                // Store original TOML config for serialization
+                config.OriginalTomlConfig = tomlConfig;
 
                 // Apply global configuration
                 if (tomlConfig.Global != null) Configuration.ApplyTomlSection(config, tomlConfig.Global);
@@ -275,5 +290,20 @@ public static class CommandLineParser {
                 return parseResult.GetValueForArgument(argument) is T value ? value : default;
 
         return default;
+    }
+
+    private static void DumpConfigInFormat(Configuration config, string format) {
+        try {
+            string output = format.ToLower() switch {
+                "json" => config.ToJson(),
+                "toml" => config.ToToml(),
+                _ => throw new ArgumentException($"Unsupported format '{format}'. Supported formats: json, toml")
+            };
+            
+            Console.WriteLine(output);
+        }
+        catch (Exception ex) {
+            Console.WriteLine($"Error dumping config in {format} format: {ex.Message}");
+        }
     }
 }
