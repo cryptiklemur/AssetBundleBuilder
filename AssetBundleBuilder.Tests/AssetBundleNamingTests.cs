@@ -6,6 +6,7 @@ using Xunit.Abstractions;
 
 namespace CryptikLemur.AssetBundleBuilder.Tests;
 
+[Collection("AssetBuilder Sequential Tests")]
 public class AssetBundleNamingTests(ITestOutputHelper output) : AssetBundleTestBase(output, "NamingTestOutput") {
     [Theory]
     [InlineData("simple.modname", "resource_simple_modname")]

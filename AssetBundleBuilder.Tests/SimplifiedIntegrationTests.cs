@@ -8,6 +8,7 @@ using Xunit.Abstractions;
 
 namespace CryptikLemur.AssetBundleBuilder.Tests;
 
+[Collection("AssetBuilder Sequential Tests")]
 public class SimplifiedIntegrationTests(ITestOutputHelper output)
     : AssetBundleTestBase(output, "SimplifiedIntegrationTestOutput") {
     [Fact]
@@ -21,6 +22,27 @@ public class SimplifiedIntegrationTests(ITestOutputHelper output)
             testAssetsDir,
             _testOutputPath
         );
+
+        // Create mock FileSystem
+        var mockFileSystem = new Mock<IFileSystemOperations>();
+        mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
+                      .Returns(new[] { Path.Combine(testAssetsDir, "test.txt") });
+
+        // Create mock ProcessRunner
+        var mockProcessRunner = new Mock<IProcessRunner>();
+        mockProcessRunner
+            .Setup(x => x.RunAsync(It.IsAny<ProcessStartInfo>()))
+            .ReturnsAsync(new ProcessResult {
+                ExitCode = 0,
+                StandardOutput = "Mock Unity execution completed successfully",
+                StandardError = ""
+            });
+
+        // Inject mocks
+        Program.FileSystem = mockFileSystem.Object;
+        Program.ProcessRunner = mockProcessRunner.Object;
 
         // Act
         bool success = await BuildAssetBundleAsync(config);
@@ -59,6 +81,13 @@ public class SimplifiedIntegrationTests(ITestOutputHelper output)
             targets
         );
 
+        // Create mock FileSystem
+        var mockFileSystem = new Mock<IFileSystemOperations>();
+        mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
+                      .Returns(new[] { Path.Combine(testAssetsDir, "test.txt") });
+
         // Create a mock ProcessRunner
         var mockProcessRunner = new Mock<IProcessRunner>();
         mockProcessRunner
@@ -69,7 +98,8 @@ public class SimplifiedIntegrationTests(ITestOutputHelper output)
                 StandardError = ""
             });
 
-        // Inject the mock
+        // Inject the mocks
+        Program.FileSystem = mockFileSystem.Object;
         Program.ProcessRunner = mockProcessRunner.Object;
 
         // Act
@@ -103,6 +133,13 @@ public class SimplifiedIntegrationTests(ITestOutputHelper output)
             _testOutputPath
         );
 
+        // Create mock FileSystem
+        var mockFileSystem = new Mock<IFileSystemOperations>();
+        mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
+                      .Returns(new[] { Path.Combine(testAssetsDir1, "test.txt") });
+
         // Create a mock ProcessRunner
         var mockProcessRunner = new Mock<IProcessRunner>();
         mockProcessRunner
@@ -113,7 +150,8 @@ public class SimplifiedIntegrationTests(ITestOutputHelper output)
                 StandardError = ""
             });
 
-        // Inject the mock
+        // Inject the mocks
+        Program.FileSystem = mockFileSystem.Object;
         Program.ProcessRunner = mockProcessRunner.Object;
 
         // Act
@@ -145,6 +183,15 @@ public class SimplifiedIntegrationTests(ITestOutputHelper output)
             _testOutputPath
         );
 
+        // Create mock FileSystem that returns false for missing directory
+        var mockFileSystem = new Mock<IFileSystemOperations>();
+        mockFileSystem.Setup(x => x.DirectoryExists(nonExistentDir)).Returns(false);
+        mockFileSystem.Setup(x => x.DirectoryExists(It.Is<string>(s => s != nonExistentDir))).Returns(true);
+        mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
+
+        // Inject the mock
+        Program.FileSystem = mockFileSystem.Object;
+
         // Act
         bool success = await BuildAssetBundleAsync(config);
 
@@ -168,6 +215,13 @@ public class SimplifiedIntegrationTests(ITestOutputHelper output)
         string sectionName = bundleName.Replace(".", "_");
         config.TomlConfig.Bundles[sectionName].Filename = "custom_[bundle_name]_format";
 
+        // Create mock FileSystem
+        var mockFileSystem = new Mock<IFileSystemOperations>();
+        mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
+                      .Returns(new[] { Path.Combine(testAssetsDir, "test.txt") });
+
         // Create a mock ProcessRunner
         var mockProcessRunner = new Mock<IProcessRunner>();
         mockProcessRunner
@@ -178,7 +232,8 @@ public class SimplifiedIntegrationTests(ITestOutputHelper output)
                 StandardError = ""
             });
 
-        // Inject the mock
+        // Inject the mocks
+        Program.FileSystem = mockFileSystem.Object;
         Program.ProcessRunner = mockProcessRunner.Object;
 
         // Act
@@ -220,6 +275,13 @@ public class SimplifiedIntegrationTests(ITestOutputHelper output)
         string sectionName = "include_test"; // "include.test" -> "include_test"
         config.TomlConfig.Bundles[sectionName].IncludePatterns = ["*.txt"];
 
+        // Create mock FileSystem
+        var mockFileSystem = new Mock<IFileSystemOperations>();
+        mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
+                      .Returns(new[] { Path.Combine(testAssetsDir, "include.txt"), Path.Combine(testAssetsDir, "another.txt") });
+
         // Create a mock ProcessRunner
         var mockProcessRunner = new Mock<IProcessRunner>();
         mockProcessRunner
@@ -230,7 +292,8 @@ public class SimplifiedIntegrationTests(ITestOutputHelper output)
                 StandardError = ""
             });
 
-        // Inject the mock
+        // Inject the mocks
+        Program.FileSystem = mockFileSystem.Object;
         Program.ProcessRunner = mockProcessRunner.Object;
 
         // Act
@@ -272,6 +335,13 @@ public class SimplifiedIntegrationTests(ITestOutputHelper output)
         string sectionName = "exclude_test"; // "exclude.test" -> "exclude_test"
         config.TomlConfig.Bundles[sectionName].ExcludePatterns = ["*.tmp", "*.bak"];
 
+        // Create mock FileSystem
+        var mockFileSystem = new Mock<IFileSystemOperations>();
+        mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
+                      .Returns(new[] { Path.Combine(testAssetsDir, "keep.txt") });
+
         // Create a mock ProcessRunner
         var mockProcessRunner = new Mock<IProcessRunner>();
         mockProcessRunner
@@ -282,7 +352,8 @@ public class SimplifiedIntegrationTests(ITestOutputHelper output)
                 StandardError = ""
             });
 
-        // Inject the mock
+        // Inject the mocks
+        Program.FileSystem = mockFileSystem.Object;
         Program.ProcessRunner = mockProcessRunner.Object;
 
         // Act
@@ -306,6 +377,7 @@ public class SimplifiedIntegrationTests(ITestOutputHelper output)
 
     public override void Dispose() {
         Program.ProcessRunner = new SystemProcessRunner();
+        Program.FileSystem = new Utilities.SystemFileOperations();
         base.Dispose();
     }
 }

@@ -12,7 +12,7 @@ namespace CryptikLemur.AssetBundleBuilder;
 public static class Program {
     public static Configuration Config { get; set; } = null!;
     public static IProcessRunner ProcessRunner { get; set; } = new SystemProcessRunner();
-    public static IFileSystemOperations FileSystem { get; set; } = new Utilities.SystemFileOperations();
+    public static IFileSystemOperations FileSystem { get; set; } = new SystemFileOperations();
 
     internal static ILogger Logger { get; set; } = CreateDefaultLogger();
 
@@ -64,7 +64,7 @@ public static class Program {
     public static async Task<int> BuildAssetBundles(Configuration config) {
         // Initialize global config
         Config = config;
-        Logger.Information("Starting Unity Multi-Bundle Asset Builder");
+        Logger.Information("Starting Unity Asset Builder");
 
         if (config.TomlConfig.Bundles.Count == 0) {
             Logger.Error("No bundles defined in TOML configuration");
@@ -83,16 +83,12 @@ public static class Program {
             ? config.BuildTargetList
             : config.TomlConfig.Global.AllowedTargets.ToList();*/
 
-        Logger.Information("Building {BundleCount} bundles", bundleNamesToProcess.Count);
-
         // Create bundle configurations for each combination of bundle and target
         foreach (string bundleName in bundleNamesToProcess) {
-            if (!config.TomlConfig.Bundles.ContainsKey(bundleName)) {
+            if (!config.TomlConfig.Bundles.TryGetValue(bundleName, out var bundleConfig)) {
                 Logger.Warning("Bundle '{BundleName}' not found in configuration, skipping", bundleName);
                 continue;
             }
-
-            var bundleConfig = config.TomlConfig.Bundles[bundleName];
 
             var unityConfig = new UnityBundleConfig {
                 bundleName = bundleConfig.BundleName,
@@ -110,7 +106,7 @@ public static class Program {
             // For targetless bundles, buildTargets should be null
             if (bundleConfig.Targetless) {
                 bundlesToBuild.Add(unityConfig with { buildTargets = null, noPlatformSuffix = true });
-                Logger.Information("Added to build queue: {BundleName} (targetless)", bundleName);
+                Logger.Verbose("Added to build queue: {BundleName} (targetless)", bundleName);
             }
             else {
                 var targetsToProcess = config.BuildTargetList.Count > 0
@@ -118,12 +114,12 @@ public static class Program {
                     : config.TomlConfig.Global.AllowedTargets.ToList();
 
                 bundlesToBuild.Add(unityConfig with { buildTargets = targetsToProcess, noPlatformSuffix = false });
-                Logger.Information("Added to build queue: {BundleName} for targets: {Targets}", bundleName,
+                Logger.Verbose("Added to build queue: {BundleName} for targets: {Targets}", bundleName,
                     string.Join(", ", targetsToProcess));
             }
         }
 
-        Logger.Information("Building {Count} bundles across all targets in single Unity process",
+        Logger.Verbose("Building {Count} bundles across all targets in single Unity process",
             bundlesToBuild.Count);
 
         // Manage Unity Hub if not in CI mode
@@ -156,7 +152,7 @@ public static class Program {
                 FileSystem.DirectoryExists(config.TomlConfig.Global.TempProjectPath)) {
                 try {
                     FileSystem.DeleteDirectory(config.TomlConfig.Global.TempProjectPath, true);
-                    Logger.Information("Cleaned up existing temp project: {TempProjectPath}",
+                    Logger.Verbose("Cleaned up existing temp project: {TempProjectPath}",
                         config.TomlConfig.Global.TempProjectPath);
                 }
                 catch (Exception ex) {
@@ -174,16 +170,13 @@ public static class Program {
             List<string> failedTargets = [];
 
             // Create single JSON config file with all bundles for all targets
-            Logger.Information("Building {TotalCount} bundles in single Unity process",
-                bundlesToBuild.Count);
-
             var allBundlesConfig = new UnityMultiBundleConfig { bundles = bundlesToBuild };
             string configJson =
                 JsonSerializer.Serialize(allBundlesConfig, new JsonSerializerOptions { WriteIndented = true });
             string configPath = Path.Combine(config.TomlConfig.Global.TempProjectPath, "bundle-config.json");
             FileSystem.WriteAllText(configPath, configJson);
 
-            Logger.Information("Created unified bundle configuration file: {ConfigPath}", configPath);
+            Logger.Debug("Created unified bundle configuration file: {ConfigPath}", configPath);
 
             // Build Unity command line arguments for single process
             var unityArgsList = new List<string> {
@@ -209,7 +202,7 @@ public static class Program {
             ]);
 
             // Execute Unity once for all targets and bundles
-            Logger.Information("Launching single Unity process to build all bundles across all targets");
+            Logger.Verbose("Launching single Unity process to build all bundles across all targets");
 
             // Create ProcessStartInfo for Unity execution
             var startInfo = new ProcessStartInfo {
@@ -222,12 +215,15 @@ public static class Program {
             if (unityPath.EndsWith(".sh") || unityPath.EndsWith(".bat")) {
                 if (unityPath.EndsWith(".sh")) {
                     startInfo.FileName = "bash";
-                    startInfo.Arguments = $"\"{unityPath}\" " + string.Join(" ", unityArgsList.Select(arg => $"\"{arg}\""));
-                } else {
+                    startInfo.Arguments =
+                        $"\"{unityPath}\" " + string.Join(" ", unityArgsList.Select(arg => $"\"{arg}\""));
+                }
+                else {
                     startInfo.FileName = unityPath;
                     startInfo.Arguments = string.Join(" ", unityArgsList.Select(arg => $"\"{arg}\""));
                 }
-            } else {
+            }
+            else {
                 startInfo.FileName = unityPath;
                 startInfo.Arguments = string.Join(" ", unityArgsList.Select(arg => $"\"{arg}\""));
             }
@@ -236,14 +232,14 @@ public static class Program {
             var result = await ProcessRunner.RunAsync(startInfo);
 
             // Log output and errors
-            if (!string.IsNullOrEmpty(result.StandardOutput)) {
-                foreach (var line in result.StandardOutput.Split('\n', StringSplitOptions.RemoveEmptyEntries)) {
-                    Logger.Information("Unity: {Output}", line.Trim());
+            if (!string.IsNullOrEmpty(result.StandardOutput) && config.Debug) {
+                foreach (string line in result.StandardOutput.Split('\n', StringSplitOptions.RemoveEmptyEntries)) {
+                    Logger.Debug("Unity: {Output}", line.Trim());
                 }
             }
 
-            if (!string.IsNullOrEmpty(result.StandardError)) {
-                foreach (var line in result.StandardError.Split('\n', StringSplitOptions.RemoveEmptyEntries)) {
+            if (!string.IsNullOrEmpty(result.StandardError) && config.Debug) {
+                foreach (string line in result.StandardError.Split('\n', StringSplitOptions.RemoveEmptyEntries)) {
                     Logger.Error("Unity Error: {Error}", line.Trim());
                 }
             }
@@ -251,11 +247,8 @@ public static class Program {
             if (!result.Success) {
                 Logger.Error("Unity build failed with exit code {ExitCode}", result.ExitCode);
                 totalFailed = bundlesToBuild.Count;
-                return 1;
             }
             else {
-                Logger.Information("Successfully built all {Count} bundles!",
-                    bundlesToBuild.Count);
                 totalSuccess = bundlesToBuild.Count;
             }
 
@@ -279,26 +272,27 @@ public static class Program {
         finally {
             // Clean up Unity Hub if we started it and not in CI mode
             if (!config.CiMode && !wasHubRunning && IsUnityHubRunning()) {
-                Logger.Information("Stopping Unity Hub...");
+                Logger.Debug("Stopping Unity Hub...");
                 StopUnityHub();
             }
 
             // Clean up temporary project only if explicitly requested
-            if (config.TomlConfig.Global.CleanTempProject &&
+            if (!string.IsNullOrEmpty(config.TomlConfig.Global.TempProjectPath) &&
                 FileSystem.DirectoryExists(config.TomlConfig.Global.TempProjectPath)) {
-                try {
-                    FileSystem.DeleteDirectory(config.TomlConfig.Global.TempProjectPath, true);
-                    Logger.Information("Cleaned up temporary project: {TempProjectPath}",
+                if (config.TomlConfig.Global.CleanTempProject) {
+                    try {
+                        FileSystem.DeleteDirectory(config.TomlConfig.Global.TempProjectPath, true);
+                        Logger.Information("Cleaned up temporary project: {TempProjectPath}",
+                            config.TomlConfig.Global.TempProjectPath);
+                    }
+                    catch (Exception ex) {
+                        Logger.Warning("Could not clean up temporary project: {Message}", ex.Message);
+                    }
+                }
+                else {
+                    Logger.Debug("Temporary project preserved at: {TempProjectPath}",
                         config.TomlConfig.Global.TempProjectPath);
                 }
-                catch (Exception ex) {
-                    Logger.Warning("Could not clean up temporary project: {Message}", ex.Message);
-                }
-            }
-            else if (!config.TomlConfig.Global.CleanTempProject &&
-                     FileSystem.DirectoryExists(config.TomlConfig.Global.TempProjectPath)) {
-                Logger.Debug("Temporary project preserved at: {TempProjectPath}",
-                    config.TomlConfig.Global.TempProjectPath);
             }
         }
     }
@@ -308,7 +302,7 @@ public static class Program {
     /// </summary>
     private static void CreateUnityProject(string projectPath, List<UnityBundleConfig> bundles,
         string linkMethod) {
-        Logger.Information("Creating Unity project for {Count} bundles at: {ProjectPath}", bundles.Count, projectPath);
+        Logger.Verbose("Creating Unity project for {Count} bundles at: {ProjectPath}", bundles.Count, projectPath);
 
         // Create project structure
         FileSystem.CreateDirectory(projectPath);
@@ -341,7 +335,7 @@ public static class Program {
             string normalizedSource = Path.GetFullPath(bundle.assetDirectory);
 
             if (linkedSources.Contains(normalizedSource)) {
-                Logger.Information(
+                Logger.Debug(
                     "Skipping asset linking for bundle {BundleName} - source directory already linked: {AssetDirectory}",
                     bundle.bundleName, bundle.assetDirectory);
                 continue;
@@ -353,11 +347,11 @@ public static class Program {
             LinkAssets(bundle.assetDirectory, targetPath, linkMethod);
             linkedSources.Add(normalizedSource);
 
-            Logger.Information("Linked assets for bundle {BundleName}: {AssetDirectory} -> {TargetPath}",
+            Logger.Debug("Linked assets for bundle {BundleName}: {AssetDirectory} -> {TargetPath}",
                 bundle.bundleName, bundle.assetDirectory, targetPath);
         }
 
-        Logger.Information("Unity project setup complete");
+        Logger.Debug("Unity project setup complete");
     }
 
     // Include the embedded C# scripts here...
@@ -377,7 +371,7 @@ public static class Program {
     // Unity scripts are now copied from UnityScripts/ directory instead of being embedded
 
     private static void LinkAssets(string sourceDirectory, string targetPath, string linkMethod) {
-        Logger.Information("Linking assets using method: {LinkMethod}", linkMethod);
+        Logger.Debug("Linking assets using method: {LinkMethod}", linkMethod);
         Logger.Debug("Source: {SourceDirectory}", sourceDirectory);
         Logger.Debug("Target: {TargetPath}", targetPath);
 
@@ -395,19 +389,19 @@ public static class Program {
         switch (linkMethod.ToLower()) {
             case "copy":
                 CopyDirectory(sourceDirectory, targetPath);
-                Logger.Information("Assets copied successfully");
+                Logger.Verbose("Assets copied successfully");
                 break;
             case "symlink":
                 FileSystem.CreateSymbolicLink(targetPath, sourceDirectory);
-                Logger.Information("Symbolic link created successfully");
+                Logger.Verbose("Symbolic link created successfully");
                 break;
             case "hardlink":
                 CreateHardLink(sourceDirectory, targetPath);
-                Logger.Information("Hard links created successfully");
+                Logger.Verbose("Hard links created successfully");
                 break;
             case "junction":
                 FileSystem.CreateJunction(targetPath, sourceDirectory);
-                Logger.Information("Junction created successfully");
+                Logger.Verbose("Junction created successfully");
                 break;
             default:
                 throw new ArgumentException($"Unknown link method: {linkMethod}");
@@ -456,7 +450,6 @@ public static class Program {
             }
         }
     }
-
 
 
     internal static int RunCommand(string command, string arguments) {

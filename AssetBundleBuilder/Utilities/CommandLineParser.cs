@@ -93,14 +93,12 @@ public static class CommandLineParser {
             if (result.Tokens.Count == 0) {
                 string defaultConfigPath = Path.Combine(Directory.GetCurrentDirectory(), ".assetbundler.toml");
                 if (!File.Exists(defaultConfigPath)) {
-                    Console.WriteLine("No arguments provided and no .assetbundler.toml found in current directory.");
+                    Console.WriteLine("No .assetbundler.toml found in current directory.");
                     Console.WriteLine(
                         "Use --help for usage information or create a .assetbundler.toml configuration file.");
                     context.ExitCode = 1;
                     return;
                 }
-
-                Console.WriteLine($"No arguments provided, using default config: {defaultConfigPath}");
             }
 
             // Build configuration from parsed arguments
@@ -147,6 +145,9 @@ public static class CommandLineParser {
 
             // Initialize logging
             Program.InitializeLogging(config.GetVerbosity());
+
+            Program.Logger.Verbose(
+                "No specific bundles specified, building all {Count} bundles", config.BundleConfigNames.Count);
 
             // Execute the build using multi-bundle mode (works for single bundles too)
             context.ExitCode = Program.BuildAssetBundles(config).GetAwaiter().GetResult();

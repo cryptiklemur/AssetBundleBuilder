@@ -7,6 +7,7 @@ using Xunit.Abstractions;
 
 namespace CryptikLemur.AssetBundleBuilder.Tests;
 
+[Collection("AssetBuilder Sequential Tests")]
 public class AssetLinkingTests(ITestOutputHelper output) : AssetBundleTestBase(output, "LinkingTestOutput") {
     [Fact]
     public async Task BuildMultipleBundlesWithSameSource_ShouldPreventDuplicateLinking() {

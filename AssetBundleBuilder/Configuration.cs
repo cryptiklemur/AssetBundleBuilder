@@ -73,11 +73,11 @@ public class Configuration {
         }
 
         // If no bundles specified, build all available bundles
-        if (BundleConfigNames.Count == 0 && tomlConfig.Bundles.Count > 1) {
-            BundleConfigNames = tomlConfig.Bundles.Keys.ToList();
-            Console.WriteLine(
-                $"No specific bundles specified, building all {BundleConfigNames.Count} bundles");
+        if (BundleConfigNames.Count != 0 || tomlConfig.Bundles.Count <= 1 || DumpConfig != null || ListBundles) {
+            return;
         }
+
+        BundleConfigNames = tomlConfig.Bundles.Keys.ToList();
     }
 
     public List<string> BundleConfigNames { get; set; } = [];

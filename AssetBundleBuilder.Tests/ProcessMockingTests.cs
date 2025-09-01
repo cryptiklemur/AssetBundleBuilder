@@ -6,6 +6,7 @@ using Xunit.Abstractions;
 
 namespace CryptikLemur.AssetBundleBuilder.Tests;
 
+[Collection("AssetBuilder Sequential Tests")]
 public class ProcessMockingTests(ITestOutputHelper output) : AssetBundleTestBase(output, "ProcessMockingTestOutput") {
     [Fact]
     public async Task BuildSingleBundle_ShouldCallUnityWithCorrectArguments() {
@@ -19,6 +20,13 @@ public class ProcessMockingTests(ITestOutputHelper output) : AssetBundleTestBase
             _testOutputPath
         );
 
+        // Create mock FileSystem
+        var mockFileSystem = new Mock<IFileSystemOperations>();
+        mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
+                      .Returns(new[] { Path.Combine(testAssetsDir, "test.txt") });
+
         // Create a mock ProcessRunner
         var mockProcessRunner = new Mock<IProcessRunner>();
         mockProcessRunner
@@ -29,7 +37,8 @@ public class ProcessMockingTests(ITestOutputHelper output) : AssetBundleTestBase
                 StandardError = ""
             });
 
-        // Inject the mock
+        // Inject the mocks
+        Program.FileSystem = mockFileSystem.Object;
         Program.ProcessRunner = mockProcessRunner.Object;
 
         // Act
@@ -65,6 +74,13 @@ public class ProcessMockingTests(ITestOutputHelper output) : AssetBundleTestBase
             ["windows"]
         );
 
+        // Create mock FileSystem
+        var mockFileSystem = new Mock<IFileSystemOperations>();
+        mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
+                      .Returns(new[] { Path.Combine(testAssetsDir, "test.txt") });
+
         // Create a mock ProcessRunner that captures the ProcessStartInfo
         ProcessStartInfo? capturedStartInfo = null;
         var mockProcessRunner = new Mock<IProcessRunner>();
@@ -77,7 +93,8 @@ public class ProcessMockingTests(ITestOutputHelper output) : AssetBundleTestBase
                 StandardError = ""
             });
 
-        // Inject the mock
+        // Inject the mocks
+        Program.FileSystem = mockFileSystem.Object;
         Program.ProcessRunner = mockProcessRunner.Object;
 
         // Act
@@ -103,6 +120,7 @@ public class ProcessMockingTests(ITestOutputHelper output) : AssetBundleTestBase
 
     public override void Dispose() {
         Program.ProcessRunner = new SystemProcessRunner();
+        Program.FileSystem = new Utilities.SystemFileOperations();
         base.Dispose();
     }
 }

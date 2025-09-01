@@ -6,6 +6,7 @@ using Xunit.Abstractions;
 
 namespace CryptikLemur.AssetBundleBuilder.Tests;
 
+[Collection("AssetBuilder Sequential Tests")]
 public class AssetBundleCreationTests(ITestOutputHelper output) : AssetBundleTestBase(output, "CreationTestOutput") {
     [Fact]
     public async Task CreateAssetBundle_WithValidInputs_ShouldSucceed() {
