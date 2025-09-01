@@ -44,14 +44,15 @@ public class AssetLabeler
     /// <summary>
     ///     Labels all assets with a single common asset bundle name, applying include/exclude patterns.
     /// </summary>
-    /// <param name="assetFileName">The asset bundle name</param>
+    /// <param name="bundleName">The asset bundle name (unique)</param>
+    /// <param name="bundlePath">The name following Assets/Data in the assetbundle</param>
     /// <param name="includePatterns">Patterns to include (if empty, includes all)</param>
     /// <param name="excludePatterns">Patterns to exclude</param>
     /// <returns>The asset bundle build info.</returns>
-    public static AssetBundleBuild LabelAllAssetsWithCommonName(string assetFileName, 
+    public static AssetBundleBuild LabelAllAssetsWithCommonName(string bundleName, string bundlePath, 
         List<string> includePatterns = null, List<string> excludePatterns = null)
     {
-        var sourceDirectory = Path.Combine(assetsFolder, assetFileName);
+        var sourceDirectory = Path.Combine(assetsFolder, bundlePath);
         Debug.Log($"Finding all assets in {sourceDirectory}");
         
         // Ensure the directory exists before trying to enumerate files
@@ -74,16 +75,16 @@ public class AssetLabeler
             
             // Apply includes first (if specified), then excludes
             if (!IsIncluded(relativePath, includePatterns)) {
-                Debug.Log($"Not included file: {relativePath}");
+                //Debug.Log($"Not included file: {relativePath}");
                 continue;
             }
             
             if (IsExcluded(relativePath, excludePatterns)) {
-                Debug.Log($"Excluding file: {relativePath}");
+                //Debug.Log($"Excluding file: {relativePath}");
                 continue;
             }
             
-            var assetPath = Path.Combine("Assets", "Data", assetFileName, relativePath).Replace('\\', '/');
+            var assetPath = Path.Combine("Assets", "Data", bundlePath, relativePath).Replace('\\', '/');
            
             // Skip if meta file already exists
             var metaPath = assetPath + ".meta";
@@ -124,7 +125,7 @@ public class AssetLabeler
                 Debug.LogError($"[Warning] Could not get importer for: {assetPath}");
                 continue;
             }
-            importer.assetBundleName = assetFileName;
+            importer.assetBundleName = bundleName;
 
             if (isTexture && importer is TextureImporter textureImporter)
             {
@@ -174,8 +175,8 @@ public class AssetLabeler
             files.Add(assetPath);
         }
 
-        Debug.Log($"Labeling complete: {assetsLabeled} assets labeled with \"{assetFileName}\".");
-        return new AssetBundleBuild { assetBundleName = assetFileName, assetNames = files.ToArray() };
+        Debug.Log($"Labeling complete: {assetsLabeled} assets labeled with \"{bundleName}\".");
+        return new AssetBundleBuild { assetBundleName = bundleName, assetNames = files.ToArray() };
     }
 
     private static bool IsExcluded(string relativePath, List<string> excludePatterns) {

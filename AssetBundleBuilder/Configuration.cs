@@ -50,8 +50,7 @@ public class Configuration {
             return;
         }
 
-        string tomlContent = File.ReadAllText(ConfigFile);
-        var tomlConfig = TomletMain.To<TomlConfiguration>(tomlContent);
+        var tomlConfig = LoadConfigWithExtends(ConfigFile);
 
         // Store original TOML config for serialization
         TomlConfig = tomlConfig;
@@ -166,6 +165,103 @@ public class Configuration {
     public string ToJson() {
         return JsonSerializer.Serialize(TomlConfig,
             new JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower });
+    }
+
+    /// <summary>
+    ///     Load configuration with support for extending other config files
+    /// </summary>
+    private TomlConfiguration LoadConfigWithExtends(string configPath, HashSet<string>? loadedPaths = null) {
+        // Prevent circular references
+        loadedPaths ??= new HashSet<string>();
+        string absolutePath = Path.GetFullPath(configPath);
+        
+        if (!loadedPaths.Add(absolutePath)) {
+            throw new InvalidOperationException($"Circular reference detected in config extends: {absolutePath}");
+        }
+
+        if (!File.Exists(configPath)) {
+            throw new FileNotFoundException($"Configuration file not found: {configPath}");
+        }
+
+        string tomlContent = File.ReadAllText(configPath);
+        var currentConfig = TomletMain.To<TomlConfiguration>(tomlContent);
+
+        // Check if this config extends another
+        if (!string.IsNullOrEmpty(currentConfig.Global.Extends)) {
+            // Resolve relative path based on current config file location
+            string configDir = Path.GetDirectoryName(absolutePath) ?? Directory.GetCurrentDirectory();
+            string extendedPath = Path.GetFullPath(Path.Combine(configDir, currentConfig.Global.Extends));
+            string extendedConfigPath;
+            
+            // Check if the extends value points to a directory
+            if (Directory.Exists(extendedPath)) {
+                // It's a directory - look for same-named config first, then default config
+                
+                // First try config with same name as current file
+                string currentFileName = Path.GetFileName(configPath);
+                string sameNameConfigPath = Path.Combine(extendedPath, currentFileName);
+                
+                if (File.Exists(sameNameConfigPath)) {
+                    extendedConfigPath = sameNameConfigPath;
+                } else {
+                    // Fall back to .assetbundler.toml in the target directory
+                    extendedConfigPath = Path.Combine(extendedPath, ".assetbundler.toml");
+                }
+            } else {
+                // It's a file path (or will fail if it doesn't exist)
+                extendedConfigPath = extendedPath;
+            }
+            
+            // Load the extended config first
+            var baseConfig = LoadConfigWithExtends(extendedConfigPath, loadedPaths);
+            
+            // Merge current config on top of base config
+            currentConfig = MergeConfigurations(baseConfig, currentConfig);
+        }
+
+        return currentConfig;
+    }
+
+    /// <summary>
+    ///     Merge two configurations, with the child overriding the parent
+    /// </summary>
+    private TomlConfiguration MergeConfigurations(TomlConfiguration parent, TomlConfiguration child) {
+        // Create a new config starting with parent values
+        var merged = new TomlConfiguration {
+            Global = MergeGlobalConfig(parent.Global, child.Global),
+            Bundles = new Dictionary<string, TomlBundleConfig>(parent.Bundles)
+        };
+
+        // Override or add bundles from child
+        foreach (var bundle in child.Bundles) {
+            merged.Bundles[bundle.Key] = bundle.Value;
+        }
+
+        return merged;
+    }
+
+    /// <summary>
+    ///     Merge global configurations
+    /// </summary>
+    private TomlGlobalConfig MergeGlobalConfig(TomlGlobalConfig parent, TomlGlobalConfig child) {
+        var merged = new TomlGlobalConfig {
+            // Don't inherit extends - it's already been processed
+            Extends = null,
+            UnityVersion = !string.IsNullOrEmpty(child.UnityVersion) ? child.UnityVersion : parent.UnityVersion,
+            UnityEditorPath = !string.IsNullOrEmpty(child.UnityEditorPath) ? child.UnityEditorPath : parent.UnityEditorPath,
+            UnityHubPath = !string.IsNullOrEmpty(child.UnityHubPath) ? child.UnityHubPath : parent.UnityHubPath,
+            AllowedTargets = child.AllowedTargets?.Count > 0 ? child.AllowedTargets : parent.AllowedTargets,
+            TempProjectPath = child.TempProjectPath ?? parent.TempProjectPath,
+            CleanTempProject = child.CleanTempProject || parent.CleanTempProject,
+            LinkMethod = child.LinkMethod != "copy" ? child.LinkMethod : parent.LinkMethod,
+            LogFile = child.LogFile ?? parent.LogFile,
+            ExcludePatterns = child.ExcludePatterns ?? parent.ExcludePatterns,
+            IncludePatterns = child.IncludePatterns ?? parent.IncludePatterns,
+            Filename = child.Filename ?? parent.Filename,
+            Targetless = child.Targetless && parent.Targetless
+        };
+
+        return merged;
     }
 
     /// <summary>

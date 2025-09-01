@@ -3,6 +3,7 @@ using Tomlet.Attributes;
 namespace CryptikLemur.AssetBundleBuilder.Config;
 
 public class TomlGlobalConfig {
+    [TomlProperty("extends")] public string? Extends { get; set; }
     [TomlProperty("unity_version")] public string UnityVersion { get; set; } = string.Empty;
     [TomlProperty("unity_editor_path")] public string UnityEditorPath { get; set; } = string.Empty;
     [TomlProperty("unity_hub_path")] public string UnityHubPath { get; set; } = string.Empty;

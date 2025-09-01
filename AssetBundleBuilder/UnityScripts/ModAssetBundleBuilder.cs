@@ -20,6 +20,7 @@ public class ModAssetBundleBuilder
     public class BundleConfig
     {
         public string bundleName;
+        public string bundlePath;
         public string assetDirectory;
         public string outputDirectory;
         public List<string> buildTargets; // null for targetless, array for targeted bundles
@@ -27,6 +28,10 @@ public class ModAssetBundleBuilder
         public string filenameFormat;
         public List<string> includePatterns;
         public List<string> excludePatterns;
+
+        public string GetBundlePathOrName() {
+            return string.IsNullOrEmpty(bundlePath) ? bundleName : bundlePath;
+        }
         
         public BundleConfig()
         {
@@ -143,7 +148,8 @@ public class ModAssetBundleBuilder
         }
 
         // Ensure textures are labeled correctly before proceeding.
-        var bundle = AssetLabeler.LabelAllAssetsWithCommonName(assetBundleName, config.includePatterns, config.excludePatterns);
+        var bundle = AssetLabeler.LabelAllAssetsWithCommonName(assetBundleName, config.bundlePath,
+            config.includePatterns, config.excludePatterns);
         if (bundle.assetNames == null || bundle.assetNames.Count() == 0) {
             throw new Exception("No assets were labeled; aborting asset bundle build.");
         }

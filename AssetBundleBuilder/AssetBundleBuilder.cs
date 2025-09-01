@@ -92,6 +92,9 @@ public static class Program {
 
             var unityConfig = new UnityBundleConfig {
                 bundleName = bundleConfig.BundleName,
+                bundlePath = string.IsNullOrEmpty(bundleConfig.BundlePath)
+                    ? bundleConfig.BundleName
+                    : bundleConfig.BundlePath,
                 assetDirectory = bundleConfig.AssetDirectory,
                 outputDirectory = Path.IsPathRooted(bundleConfig.OutputDirectory)
                     ? bundleConfig.OutputDirectory
@@ -189,7 +192,13 @@ public static class Program {
             if (!string.IsNullOrEmpty(config.TomlConfig.Global.LogFile)) {
                 unityArgsList.Add("-logfile");
                 unityArgsList.Add(config.TomlConfig.Global.LogFile);
-                Logger.Information("Unity log will be written to: {LogFile}", config.TomlConfig.Global.LogFile);
+                Logger.Verbose("Unity log will be written to: {LogFile}", config.TomlConfig.Global.LogFile);
+            }
+            else if (!config.Debug) {
+                string logPath = Path.Join(config.TomlConfig.Global.TempProjectPath, "unity.log");
+                unityArgsList.Add("-logfile");
+                unityArgsList.Add(logPath);
+                Logger.Verbose("Unity log will be written to: {LogFile}", logPath);
             }
 
             unityArgsList.AddRange([
@@ -232,7 +241,7 @@ public static class Program {
             var result = await ProcessRunner.RunAsync(startInfo);
 
             // Log output and errors
-            if (!string.IsNullOrEmpty(result.StandardOutput) && config.Debug) {
+            if (!string.IsNullOrEmpty(result.StandardOutput)) {
                 foreach (string line in result.StandardOutput.Split('\n', StringSplitOptions.RemoveEmptyEntries)) {
                     Logger.Debug("Unity: {Output}", line.Trim());
                 }
@@ -240,7 +249,7 @@ public static class Program {
 
             if (!string.IsNullOrEmpty(result.StandardError) && config.Debug) {
                 foreach (string line in result.StandardError.Split('\n', StringSplitOptions.RemoveEmptyEntries)) {
-                    Logger.Error("Unity Error: {Error}", line.Trim());
+                    Logger.Debug("Unity Error: {Error}", line.Trim());
                 }
             }
 
@@ -321,12 +330,14 @@ public static class Program {
 
         foreach (var bundle in bundles) {
             if (string.IsNullOrEmpty(bundle.assetDirectory)) {
-                Logger.Warning("Bundle {BundleName} has no asset directory specified, skipping", bundle.bundleName);
+                Logger.Warning("Bundle {BundleName} has no asset directory specified, skipping",
+                    bundle.GetBundlePathOrName());
                 continue;
             }
 
             if (!FileSystem.DirectoryExists(bundle.assetDirectory)) {
-                Logger.Error("Asset directory not found for bundle {BundleName}: {AssetDirectory}", bundle.bundleName,
+                Logger.Error("Asset directory not found for bundle {BundleName}: {AssetDirectory}",
+                    bundle.GetBundlePathOrName(),
                     bundle.assetDirectory);
                 throw new DirectoryNotFoundException($"Asset directory not found: {bundle.assetDirectory}");
             }
@@ -337,12 +348,12 @@ public static class Program {
             if (linkedSources.Contains(normalizedSource)) {
                 Logger.Debug(
                     "Skipping asset linking for bundle {BundleName} - source directory already linked: {AssetDirectory}",
-                    bundle.bundleName, bundle.assetDirectory);
+                    bundle.GetBundlePathOrName(), bundle.assetDirectory);
                 continue;
             }
 
             // Target directory MUST be named after the bundle
-            string targetPath = Path.Combine(projectPath, "Assets", "Data", bundle.bundleName);
+            string targetPath = Path.Combine(projectPath, "Assets", "Data", bundle.GetBundlePathOrName());
 
             LinkAssets(bundle.assetDirectory, targetPath, linkMethod);
             linkedSources.Add(normalizedSource);
@@ -451,7 +462,6 @@ public static class Program {
         }
     }
 
-
     internal static int RunCommand(string command, string arguments) {
         ProcessStartInfo processInfo;
 
@@ -557,6 +567,7 @@ public static class Program {
     /// </summary>
     public record UnityBundleConfig {
         public string bundleName { get; set; } = "";
+        public string bundlePath { get; set; } = "";
         public string assetDirectory { get; set; } = "";
         public string outputDirectory { get; set; } = "";
         public List<string>? buildTargets { get; set; } // null for targetless bundles, array for targeted bundles
@@ -564,6 +575,10 @@ public static class Program {
         public string filenameFormat { get; set; } = "";
         public List<string> includePatterns { get; set; } = [];
         public List<string> excludePatterns { get; set; } = [];
+
+        public string GetBundlePathOrName() {
+            return string.IsNullOrEmpty(bundlePath) ? bundleName : bundlePath;
+        }
     }
 
     /// <summary>
