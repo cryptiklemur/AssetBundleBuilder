@@ -7,7 +7,7 @@ required.
 
 ### Recommended: Using Configuration File
 
-Create a `.assetbundle.toml` file in your project:
+Create a `.assetbundler.toml` file in your project:
 
 ```toml
 [global]
@@ -27,7 +27,7 @@ targetless = true  # No platform suffix - creates single bundle for all platform
 
 [bundles.shaders] # specify `--target windows` (or mac or linux) when running assetbundlebuilder to build for each platform
 bundle_path = "author.modName"
-bundle_name = "author.modName_textures"
+bundle_name = "author.modName_shaders"
 filename = "resource_[bundle_name]_shaders_[target]"
 include_patterns = ["*.shader"]
 targetless = false  # Platform-specific - creates separate bundle per platform
@@ -40,7 +40,7 @@ Then build your bundles:
 assetbundlebuilder --bundle-config textures
 
 # Override settings from command line
-assetbundlebuilder --bundle-config shaders --target window
+assetbundlebuilder --bundle-config shaders --target windows
 ```
 
 ## Installation
