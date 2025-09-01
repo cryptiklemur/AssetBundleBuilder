@@ -1,16 +1,20 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using CryptikLemur.AssetBundleBuilder.Interfaces;
 using CryptikLemur.AssetBundleBuilder.Utilities;
 using Serilog;
 using Serilog.Events;
+using Tomlet;
 
 namespace CryptikLemur.AssetBundleBuilder;
 
 public static class Program {
-    public static Configuration? Config { get; set; }
+    public static Configuration Config { get; set; } = null!;
+    public static IProcessRunner ProcessRunner { get; set; } = new SystemProcessRunner();
+    public static IFileSystemOperations FileSystem { get; set; } = new Utilities.SystemFileOperations();
 
-    public static ILogger Logger { get; private set; } = CreateDefaultLogger();
+    internal static ILogger Logger { get; set; } = CreateDefaultLogger();
 
     private static ILogger CreateDefaultLogger() {
         try {
@@ -51,146 +55,137 @@ public static class Program {
     }
 
     private static int Main(string[] args) {
-        // Use the new System.CommandLine parser
         return CommandLineParser.ParseAndExecuteAsync(args).GetAwaiter().GetResult();
     }
 
-
-    public static int BuildAssetBundle(Configuration config) {
+    /// <summary>
+    ///     Build multiple asset bundles from TOML configuration
+    /// </summary>
+    public static async Task<int> BuildAssetBundles(Configuration config) {
         // Initialize global config
         Config = config;
-        Logger.Information("Starting Unity Asset Bundle Builder");
+        Logger.Information("Starting Unity Multi-Bundle Asset Builder");
 
-        // If unity version is specified, try to find the Unity executable
-        var unityVersion = config.GetUnityVersion();
-        var unityPath = config.GetUnityPath();
-
-        if (!string.IsNullOrEmpty(unityVersion) && string.IsNullOrEmpty(unityPath)) {
-            unityPath = UnityPathFinder.FindUnityExecutable(unityVersion) ?? "";
-            if (string.IsNullOrEmpty(unityPath)) {
-                if (config.CiMode) {
-                    Logger.Error("Could not find Unity {UnityVersion} installation", unityVersion);
-                    Logger.Error("In CI mode, Unity must be pre-installed. Auto-installation is disabled");
-                    return 1;
-                }
-
-                var installResult = PromptAndInstallUnity(unityVersion, config.NonInteractive);
-                if (installResult == 0) {
-                    // Retry finding Unity after installation
-                    unityPath = UnityPathFinder.FindUnityExecutable(unityVersion) ?? "";
-                }
-
-                if (string.IsNullOrEmpty(unityPath)) {
-                    Logger.Error(
-                        "Could not find Unity {UnityVersion} installation even after attempted installation",
-                        unityVersion);
-                    return 1;
-                }
-            }
-
-            Logger.Information("Found Unity {UnityVersion} at: {UnityPath}", unityVersion, unityPath);
-        }
-
-        // Validate paths
-        if (string.IsNullOrEmpty(unityPath)) {
-            Logger.Error("Unity path not specified and could not be auto-detected");
+        if (config.TomlConfig.Bundles.Count == 0) {
+            Logger.Error("No bundles defined in TOML configuration");
             return 1;
         }
 
-        if (!File.Exists(unityPath)) {
-            Logger.Error("Unity executable not found at '{UnityPath}'", unityPath);
-            return 1;
-        }
+        var bundlesToBuild = new List<UnityBundleConfig>();
 
-        if (!Directory.Exists(config.AssetDirectory)) {
-            Logger.Error("Asset directory not found at '{AssetDirectory}'", config.AssetDirectory);
-            return 1;
-        }
+        // Determine which bundles to build
+        var bundleNamesToProcess = config.BundleConfigNames.Count > 0
+            ? config.BundleConfigNames
+            : config.TomlConfig.Bundles.Keys.ToList();
 
-        // Get resolved bundle name
-        var bundleName = config.GetBundleName();
-        Logger.Information("Using bundle name: {BundleName}", bundleName);
+        // Determine which targets to build
+        /*var targetsToProcess = config.BuildTargetList.Count > 0 && !config.BuildTargetList.Contains("none")
+            ? config.BuildTargetList
+            : config.TomlConfig.Global.AllowedTargets.ToList();*/
 
-        // Determine if we're using auto-detected target (no platform suffix) or explicit target
-        var isAutoTarget = string.IsNullOrEmpty(config.BuildTarget);
-        var isTargetless = config.IsTargetless();
+        Logger.Information("Building {BundleCount} bundles", bundleNamesToProcess.Count);
 
-        // If no build target specified, detect current OS and don't append platform suffix
-        if (isAutoTarget) {
-            config.BuildTarget = DetectCurrentOS();
-            Logger.Information("No target specified, using current OS: {BuildTarget} (no platform suffix)",
-                config.BuildTarget);
-        }
-        else if (isTargetless) Logger.Information("Building targetless (platform-agnostic) bundle");
-        else Logger.Information("Using specified build target: {BuildTarget}", config.BuildTarget);
-
-        // Convert user-friendly build target to Unity command line format
-        // For targetless builds, use the current OS as the build platform but mark as targetless
-        var unityBuildTarget = isTargetless
-            ? ConvertBuildTarget(DetectCurrentOS())
-            : ConvertBuildTarget(config.BuildTarget);
-        Logger.Information("Unity build target: {BuildTarget}", unityBuildTarget);
-
-        // Create temporary Unity project if not specified
-        if (string.IsNullOrEmpty(config.TempProjectPath)) {
-            // Create hash from input parameters for consistent temp directory naming
-            // Include a flag to distinguish between explicit and auto-detected targets
-            var targetForHash = isAutoTarget ? "auto" : config.BuildTarget;
-            var hashInput = $"{config.AssetDirectory}|{bundleName}|{targetForHash}";
-            var hash = HashUtility.ComputeHash(hashInput);
-            config.TempProjectPath = Path.Combine(Path.GetTempPath(), $"AssetBundleBuilder_{hash}");
-        }
-
-        // Handle temp project cleanup if requested
-        if (config.CleanTempProject && Directory.Exists(config.TempProjectPath)) {
-            try {
-                Directory.Delete(config.TempProjectPath, true);
-                Logger.Information("Cleaned up existing temp project: {TempProjectPath}",
-                    config.TempProjectPath);
+        // Create bundle configurations for each combination of bundle and target
+        foreach (string bundleName in bundleNamesToProcess) {
+            if (!config.TomlConfig.Bundles.ContainsKey(bundleName)) {
+                Logger.Warning("Bundle '{BundleName}' not found in configuration, skipping", bundleName);
+                continue;
             }
-            catch (Exception ex) {
-                Logger.Warning("Could not clean up existing temp project: {Message}", ex.Message);
+
+            var bundleConfig = config.TomlConfig.Bundles[bundleName];
+
+            var unityConfig = new UnityBundleConfig {
+                bundleName = bundleConfig.BundleName,
+                assetDirectory = bundleConfig.AssetDirectory,
+                outputDirectory = Path.IsPathRooted(bundleConfig.OutputDirectory)
+                    ? bundleConfig.OutputDirectory
+                    : Path.GetFullPath(bundleConfig.OutputDirectory),
+                buildTargets = null, // null for targetless bundles
+                noPlatformSuffix = true,
+                filenameFormat = bundleConfig.Filename ?? "",
+                includePatterns = bundleConfig.IncludePatterns ?? [],
+                excludePatterns = bundleConfig.ExcludePatterns ?? []
+            };
+
+            // For targetless bundles, buildTargets should be null
+            if (bundleConfig.Targetless) {
+                bundlesToBuild.Add(unityConfig with { buildTargets = null, noPlatformSuffix = true });
+                Logger.Information("Added to build queue: {BundleName} (targetless)", bundleName);
+            }
+            else {
+                var targetsToProcess = config.BuildTargetList.Count > 0
+                    ? config.BuildTargetList
+                    : config.TomlConfig.Global.AllowedTargets.ToList();
+
+                bundlesToBuild.Add(unityConfig with { buildTargets = targetsToProcess, noPlatformSuffix = false });
+                Logger.Information("Added to build queue: {BundleName} for targets: {Targets}", bundleName,
+                    string.Join(", ", targetsToProcess));
             }
         }
 
-        Logger.Debug("Unity Path: {UnityPath}", unityPath);
-        Logger.Debug("Temp Project Path: {TempProjectPath}", config.TempProjectPath);
-        Logger.Debug("Asset Directory: {AssetDirectory}", config.AssetDirectory);
-        Logger.Debug("Bundle Name: {BundleName}", bundleName);
-        Logger.Debug("Output Directory: {OutputDirectory}", config.GetOutputDirectory());
-        Logger.Debug("Output Format: {OutputFormat}", config.Filename);
-        Logger.Debug("Build Target: {BuildTarget}", config.BuildTarget);
-
-        // Check if the build target is allowed
-        if (!config.IsBuildTargetAllowed()) {
-            var skipMessage = config.GetBuildTargetSkipMessage();
-            Logger.Warning(skipMessage);
-            return 0; // Return success but skip the build
-        }
+        Logger.Information("Building {Count} bundles across all targets in single Unity process",
+            bundlesToBuild.Count);
 
         // Manage Unity Hub if not in CI mode
-        var wasHubRunning = false;
+        bool wasHubRunning = false;
         if (!config.CiMode) {
             wasHubRunning = IsUnityHubRunning();
             if (!wasHubRunning) {
                 Logger.Verbose("Starting Unity Hub...");
-                if (!StartUnityHub())
+                if (!StartUnityHub()) {
                     Logger.Warning("Could not start Unity Hub. Continuing without it");
+                }
             }
         }
 
         try {
-            // Ensure output directory exists
-            var outputDirectory = config.GetOutputDirectory();
-            if (!Directory.Exists(outputDirectory)) {
-                Directory.CreateDirectory(outputDirectory);
-                Logger.Information("Created output directory: {OutputDirectory}", outputDirectory);
+            string unityPath = config.TomlConfig.Global.UnityEditorPath;
+
+            // Create temporary Unity project path if not specified
+            if (string.IsNullOrEmpty(config.TomlConfig.Global.TempProjectPath)) {
+                // Create hash from toml config
+                string hash = HashUtility.ComputeHash(TomletMain.TomlStringFrom(config.TomlConfig));
+                config.TomlConfig.Global.TempProjectPath =
+                    Path.Combine(Path.GetTempPath(), $"AssetBundleBuilder_{hash}");
             }
 
-            // Create temporary Unity project
-            CreateUnityProject(config.TempProjectPath, config.AssetDirectory, bundleName, config.GetLinkMethod());
+            Logger.Debug("Temp Project Path: {TempProjectPath}", config.TomlConfig.Global.TempProjectPath);
 
-            // Build Unity command line arguments
+            // Handle temp project cleanup if requested
+            if (config.TomlConfig.Global.CleanTempProject &&
+                FileSystem.DirectoryExists(config.TomlConfig.Global.TempProjectPath)) {
+                try {
+                    FileSystem.DeleteDirectory(config.TomlConfig.Global.TempProjectPath, true);
+                    Logger.Information("Cleaned up existing temp project: {TempProjectPath}",
+                        config.TomlConfig.Global.TempProjectPath);
+                }
+                catch (Exception ex) {
+                    Logger.Warning("Could not clean up existing temp project: {Message}", ex.Message);
+                }
+            }
+
+            // Create Unity project with ALL asset directories linked (only need to do this once)
+            var uniqueBundles = bundlesToBuild.GroupBy(b => b.bundleName).Select(g => g.First()).ToList();
+            CreateUnityProject(config.TomlConfig.Global.TempProjectPath, uniqueBundles,
+                config.TomlConfig.Global.LinkMethod);
+
+            int totalSuccess = 0;
+            int totalFailed = 0;
+            List<string> failedTargets = [];
+
+            // Create single JSON config file with all bundles for all targets
+            Logger.Information("Building {TotalCount} bundles in single Unity process",
+                bundlesToBuild.Count);
+
+            var allBundlesConfig = new UnityMultiBundleConfig { bundles = bundlesToBuild };
+            string configJson =
+                JsonSerializer.Serialize(allBundlesConfig, new JsonSerializerOptions { WriteIndented = true });
+            string configPath = Path.Combine(config.TomlConfig.Global.TempProjectPath, "bundle-config.json");
+            FileSystem.WriteAllText(configPath, configJson);
+
+            Logger.Information("Created unified bundle configuration file: {ConfigPath}", configPath);
+
+            // Build Unity command line arguments for single process
             var unityArgsList = new List<string> {
                 "-batchmode",
                 "-nographics",
@@ -198,85 +193,84 @@ public static class Program {
             };
 
             // Use custom logfile if provided
-            if (!string.IsNullOrEmpty(config.LogFile)) {
+            if (!string.IsNullOrEmpty(config.TomlConfig.Global.LogFile)) {
                 unityArgsList.Add("-logfile");
-                unityArgsList.Add(config.LogFile);
-                Logger.Information("Unity log will be written to: {LogFile}", config.LogFile);
+                unityArgsList.Add(config.TomlConfig.Global.LogFile);
+                Logger.Information("Unity log will be written to: {LogFile}", config.TomlConfig.Global.LogFile);
             }
 
             unityArgsList.AddRange([
                 "-projectPath",
-                config.TempProjectPath,
+                config.TomlConfig.Global.TempProjectPath,
                 "-executeMethod",
                 "ModAssetBundleBuilder.BuildBundles",
-                "-buildTarget",
-                unityBuildTarget,
-                "-bundleName",
-                bundleName,
-                "-output",
-                outputDirectory,
-                "-assetDirectory",
-                config.AssetDirectory,
-                "-noPlatformSuffix",
-                isAutoTarget || isTargetless ? "true" : "false"
+                "-bundleConfigFile",
+                configPath
             ]);
 
-            // Add custom filename format if provided
-            if (!string.IsNullOrEmpty(config.Filename)) {
-                unityArgsList.Add("-filenameFormat");
-                unityArgsList.Add(config.Filename);
-            }
+            // Execute Unity once for all targets and bundles
+            Logger.Information("Launching single Unity process to build all bundles across all targets");
 
-            // Add include patterns if any
-            if (config.IncludePatterns.Count > 0) {
-                unityArgsList.Add("-includePatterns");
-                unityArgsList.Add(string.Join(";", config.IncludePatterns));
-            }
-
-            // Add exclude patterns if any
-            if (config.ExcludePatterns.Count > 0) {
-                unityArgsList.Add("-excludePatterns");
-                unityArgsList.Add(string.Join(";", config.ExcludePatterns));
-            }
-
-            var unityArgs = unityArgsList.ToArray();
-
-            var processInfo = new ProcessStartInfo {
-                FileName = unityPath,
-                Arguments = string.Join(" ", unityArgs.Select(arg => arg.Contains(" ") ? $"\"{arg}\"" : arg)),
-                UseShellExecute = false,
+            // Create ProcessStartInfo for Unity execution
+            var startInfo = new ProcessStartInfo {
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
-                CreateNoWindow = true
+                UseShellExecute = false
             };
 
-            Logger.Information("Launching Unity...");
-            using (var process = Process.Start(processInfo)) {
-                if (process == null) throw new Exception("Launching Unity failed.");
+            // Handle shell scripts for testing
+            if (unityPath.EndsWith(".sh") || unityPath.EndsWith(".bat")) {
+                if (unityPath.EndsWith(".sh")) {
+                    startInfo.FileName = "bash";
+                    startInfo.Arguments = $"\"{unityPath}\" " + string.Join(" ", unityArgsList.Select(arg => $"\"{arg}\""));
+                } else {
+                    startInfo.FileName = unityPath;
+                    startInfo.Arguments = string.Join(" ", unityArgsList.Select(arg => $"\"{arg}\""));
+                }
+            } else {
+                startInfo.FileName = unityPath;
+                startInfo.Arguments = string.Join(" ", unityArgsList.Select(arg => $"\"{arg}\""));
+            }
 
-                // Read Unity output based on verbosity level
-                process.OutputDataReceived += (_, e) => {
-                    if (!string.IsNullOrEmpty(e.Data) && !e.Data.TrimStart().StartsWith("[Experiment"))
-                        Logger.Verbose("Unity: {Output}", e.Data);
-                };
-                process.ErrorDataReceived += (_, e) => {
-                    if (!string.IsNullOrEmpty(e.Data) && !e.Data.TrimStart().StartsWith("[Experiment"))
-                        Logger.Verbose("Unity Error: {Output}", e.Data);
-                };
+            // Execute Unity process through our abstraction
+            var result = await ProcessRunner.RunAsync(startInfo);
 
-                process.BeginOutputReadLine();
-                process.BeginErrorReadLine();
-
-                process.WaitForExit();
-
-                if (process.ExitCode != 0) {
-                    Logger.Error("Unity failed with exit code {ExitCode}", process.ExitCode);
-                    return process.ExitCode;
+            // Log output and errors
+            if (!string.IsNullOrEmpty(result.StandardOutput)) {
+                foreach (var line in result.StandardOutput.Split('\n', StringSplitOptions.RemoveEmptyEntries)) {
+                    Logger.Information("Unity: {Output}", line.Trim());
                 }
             }
 
-            Logger.Information("Asset bundles built successfully!");
-            return 0;
+            if (!string.IsNullOrEmpty(result.StandardError)) {
+                foreach (var line in result.StandardError.Split('\n', StringSplitOptions.RemoveEmptyEntries)) {
+                    Logger.Error("Unity Error: {Error}", line.Trim());
+                }
+            }
+
+            if (!result.Success) {
+                Logger.Error("Unity build failed with exit code {ExitCode}", result.ExitCode);
+                totalFailed = bundlesToBuild.Count;
+                return 1;
+            }
+            else {
+                Logger.Information("Successfully built all {Count} bundles!",
+                    bundlesToBuild.Count);
+                totalSuccess = bundlesToBuild.Count;
+            }
+
+            // Final results
+            if (totalFailed > 0) {
+                Logger.Error("Build completed with failures. Success: {Success}, Failed: {Failed}", totalSuccess,
+                    totalFailed);
+                Logger.Error("Failed targets: {FailedTargets}", string.Join(", ", failedTargets));
+                return 1;
+            }
+            else {
+                Logger.Information("Successfully built all {Count} bundle configurations!",
+                    totalSuccess);
+                return 0;
+            }
         }
         catch (Exception ex) {
             Logger.Error("Error: {Message}", ex.Message);
@@ -290,32 +284,37 @@ public static class Program {
             }
 
             // Clean up temporary project only if explicitly requested
-            if (config.CleanTempProject && Directory.Exists(config.TempProjectPath)) {
+            if (config.TomlConfig.Global.CleanTempProject &&
+                FileSystem.DirectoryExists(config.TomlConfig.Global.TempProjectPath)) {
                 try {
-                    Directory.Delete(config.TempProjectPath, true);
+                    FileSystem.DeleteDirectory(config.TomlConfig.Global.TempProjectPath, true);
                     Logger.Information("Cleaned up temporary project: {TempProjectPath}",
-                        config.TempProjectPath);
+                        config.TomlConfig.Global.TempProjectPath);
                 }
                 catch (Exception ex) {
                     Logger.Warning("Could not clean up temporary project: {Message}", ex.Message);
                 }
             }
-            else if (!config.CleanTempProject && Directory.Exists(config.TempProjectPath))
-                Logger.Debug("Temporary project preserved at: {TempProjectPath}", config.TempProjectPath);
+            else if (!config.TomlConfig.Global.CleanTempProject &&
+                     FileSystem.DirectoryExists(config.TomlConfig.Global.TempProjectPath)) {
+                Logger.Debug("Temporary project preserved at: {TempProjectPath}",
+                    config.TomlConfig.Global.TempProjectPath);
+            }
         }
     }
 
-
-    private static void CreateUnityProject(string projectPath, string assetDirectory, string bundleName,
+    /// <summary>
+    ///     Create Unity project with multiple asset directories linked
+    /// </summary>
+    private static void CreateUnityProject(string projectPath, List<UnityBundleConfig> bundles,
         string linkMethod) {
-        Logger.Information("Creating temporary Unity project at: {ProjectPath}", projectPath);
+        Logger.Information("Creating Unity project for {Count} bundles at: {ProjectPath}", bundles.Count, projectPath);
 
         // Create project structure
-        Directory.CreateDirectory(projectPath);
-        Directory.CreateDirectory(Path.Combine(projectPath, "Assets"));
-        Directory.CreateDirectory(Path.Combine(projectPath, "Assets", "Editor"));
-        Directory.CreateDirectory(Path.Combine(projectPath, "Assets", "Data"));
-        // Unity will create ProjectSettings automatically when it opens the project
+        FileSystem.CreateDirectory(projectPath);
+        FileSystem.CreateDirectory(Path.Combine(projectPath, "Assets"));
+        FileSystem.CreateDirectory(Path.Combine(projectPath, "Assets", "Editor"));
+        FileSystem.CreateDirectory(Path.Combine(projectPath, "Assets", "Data"));
 
         // Create the ModAssetBundleBuilder script
         CreateModAssetBundleBuilderScript(Path.Combine(projectPath, "Assets", "Editor"));
@@ -323,35 +322,56 @@ public static class Program {
         // Create the AssetLabeler script
         CreateAssetLabelerScript(Path.Combine(projectPath, "Assets", "Editor"));
 
-        // Create the PSDMatteUtility script
-        CreatePSDMatteUtilityScript(Path.Combine(projectPath, "Assets", "Editor"));
+        // Link/copy all asset directories - avoid duplicates by tracking source directories
+        var linkedSources = new HashSet<string>();
 
-        // Link assets from source directory to Unity project
-        var targetPath = Path.Combine(projectPath, "Assets", "Data", bundleName);
-        LinkAssets(assetDirectory, targetPath, linkMethod);
+        foreach (var bundle in bundles) {
+            if (string.IsNullOrEmpty(bundle.assetDirectory)) {
+                Logger.Warning("Bundle {BundleName} has no asset directory specified, skipping", bundle.bundleName);
+                continue;
+            }
 
-        Logger.Information("Unity project created successfully");
+            if (!FileSystem.DirectoryExists(bundle.assetDirectory)) {
+                Logger.Error("Asset directory not found for bundle {BundleName}: {AssetDirectory}", bundle.bundleName,
+                    bundle.assetDirectory);
+                throw new DirectoryNotFoundException($"Asset directory not found: {bundle.assetDirectory}");
+            }
+
+            // Normalize the source directory path to avoid duplicates
+            string normalizedSource = Path.GetFullPath(bundle.assetDirectory);
+
+            if (linkedSources.Contains(normalizedSource)) {
+                Logger.Information(
+                    "Skipping asset linking for bundle {BundleName} - source directory already linked: {AssetDirectory}",
+                    bundle.bundleName, bundle.assetDirectory);
+                continue;
+            }
+
+            // Target directory MUST be named after the bundle
+            string targetPath = Path.Combine(projectPath, "Assets", "Data", bundle.bundleName);
+
+            LinkAssets(bundle.assetDirectory, targetPath, linkMethod);
+            linkedSources.Add(normalizedSource);
+
+            Logger.Information("Linked assets for bundle {BundleName}: {AssetDirectory} -> {TargetPath}",
+                bundle.bundleName, bundle.assetDirectory, targetPath);
+        }
+
+        Logger.Information("Unity project setup complete");
     }
 
     // Include the embedded C# scripts here...
     private static void CreateModAssetBundleBuilderScript(string editorPath) {
-        var sourceFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "UnityScripts",
+        string sourceFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "UnityScripts",
             "ModAssetBundleBuilder.cs");
-        var targetFile = Path.Combine(editorPath, "ModAssetBundleBuilder.cs");
-        File.Copy(sourceFile, targetFile, true);
+        string targetFile = Path.Combine(editorPath, "ModAssetBundleBuilder.cs");
+        FileSystem.CopyFile(sourceFile, targetFile, true);
     }
 
     private static void CreateAssetLabelerScript(string editorPath) {
-        var sourceFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "UnityScripts", "AssetLabeler.cs");
-        var targetFile = Path.Combine(editorPath, "AssetLabeler.cs");
-        File.Copy(sourceFile, targetFile, true);
-    }
-
-    // ReSharper disable once InconsistentNaming
-    private static void CreatePSDMatteUtilityScript(string editorPath) {
-        var sourceFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "UnityScripts", "PSDMatteUtility.cs");
-        var targetFile = Path.Combine(editorPath, "PSDMatteUtility.cs");
-        File.Copy(sourceFile, targetFile, true);
+        string sourceFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "UnityScripts", "AssetLabeler.cs");
+        string targetFile = Path.Combine(editorPath, "AssetLabeler.cs");
+        FileSystem.CopyFile(sourceFile, targetFile, true);
     }
 
     // Unity scripts are now copied from UnityScripts/ directory instead of being embedded
@@ -362,11 +382,15 @@ public static class Program {
         Logger.Debug("Target: {TargetPath}", targetPath);
 
         // Ensure target directory doesn't exist
-        if (Directory.Exists(targetPath)) Directory.Delete(targetPath, true);
+        if (FileSystem.DirectoryExists(targetPath)) {
+            FileSystem.DeleteDirectory(targetPath, true);
+        }
 
         // Ensure parent directory exists
-        var parentDir = Path.GetDirectoryName(targetPath)!;
-        if (!Directory.Exists(parentDir)) Directory.CreateDirectory(parentDir);
+        string parentDir = Path.GetDirectoryName(targetPath)!;
+        if (!FileSystem.DirectoryExists(parentDir)) {
+            FileSystem.CreateDirectory(parentDir);
+        }
 
         switch (linkMethod.ToLower()) {
             case "copy":
@@ -374,7 +398,7 @@ public static class Program {
                 Logger.Information("Assets copied successfully");
                 break;
             case "symlink":
-                CreateSymbolicLink(sourceDirectory, targetPath);
+                FileSystem.CreateSymbolicLink(targetPath, sourceDirectory);
                 Logger.Information("Symbolic link created successfully");
                 break;
             case "hardlink":
@@ -382,7 +406,7 @@ public static class Program {
                 Logger.Information("Hard links created successfully");
                 break;
             case "junction":
-                CreateJunction(sourceDirectory, targetPath);
+                FileSystem.CreateJunction(targetPath, sourceDirectory);
                 Logger.Information("Junction created successfully");
                 break;
             default:
@@ -392,80 +416,54 @@ public static class Program {
 
     // CopyDirectory helper method
     private static void CopyDirectory(string sourceDir, string destDir) {
-        Directory.CreateDirectory(destDir);
+        FileSystem.CreateDirectory(destDir);
 
-        foreach (var dirPath in Directory.GetDirectories(sourceDir, "*", SearchOption.AllDirectories))
-            Directory.CreateDirectory(dirPath.Replace(sourceDir, destDir));
-
-        foreach (var filePath in Directory.GetFiles(sourceDir, "*.*", SearchOption.AllDirectories)) {
-            var destPath = filePath.Replace(sourceDir, destDir);
-            var destDirPath = Path.GetDirectoryName(destPath);
-            if (destDirPath != null && !Directory.Exists(destDirPath))
-                Directory.CreateDirectory(destDirPath);
-            File.Copy(filePath, destPath, true);
+        foreach (string dirPath in FileSystem.GetDirectories(sourceDir, "*", SearchOption.AllDirectories)) {
+            FileSystem.CreateDirectory(dirPath.Replace(sourceDir, destDir));
         }
-    }
 
-    private static void CreateSymbolicLink(string sourceDirectory, string targetPath) {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
-            var result = RunCommand("mklink", $"/D \"{targetPath}\" \"{sourceDirectory}\"");
-            if (result != 0)
-                throw new InvalidOperationException($"Failed to create symbolic link. Exit code: {result}");
-        }
-        else {
-            var result = RunCommand("ln", $"-s \"{sourceDirectory}\" \"{targetPath}\"");
-            if (result != 0)
-                throw new InvalidOperationException($"Failed to create symbolic link. Exit code: {result}");
+        foreach (string filePath in FileSystem.GetFiles(sourceDir, "*.*", SearchOption.AllDirectories)) {
+            string destPath = filePath.Replace(sourceDir, destDir);
+            string? destDirPath = Path.GetDirectoryName(destPath);
+            if (destDirPath != null && !FileSystem.DirectoryExists(destDirPath)) {
+                FileSystem.CreateDirectory(destDirPath);
+            }
+
+            FileSystem.CopyFile(filePath, destPath, true);
         }
     }
 
     private static void CreateHardLink(string sourceDirectory, string targetPath) {
         // Hard links work differently - we need to recursively create hard links for files
-        Directory.CreateDirectory(targetPath);
+        FileSystem.CreateDirectory(targetPath);
 
-        foreach (var dirPath in Directory.GetDirectories(sourceDirectory, "*", SearchOption.AllDirectories)) {
-            var relativePath = Path.GetRelativePath(sourceDirectory, dirPath);
-            var targetDirPath = Path.Combine(targetPath, relativePath);
-            Directory.CreateDirectory(targetDirPath);
+        foreach (string dirPath in FileSystem.GetDirectories(sourceDirectory, "*", SearchOption.AllDirectories)) {
+            string relativePath = Path.GetRelativePath(sourceDirectory, dirPath);
+            string targetDirPath = Path.Combine(targetPath, relativePath);
+            FileSystem.CreateDirectory(targetDirPath);
         }
 
-        foreach (var filePath in Directory.GetFiles(sourceDirectory, "*.*", SearchOption.AllDirectories)) {
-            var relativePath = Path.GetRelativePath(sourceDirectory, filePath);
-            var targetFilePath = Path.Combine(targetPath, relativePath);
+        foreach (string filePath in FileSystem.GetFiles(sourceDirectory, "*.*", SearchOption.AllDirectories)) {
+            string relativePath = Path.GetRelativePath(sourceDirectory, filePath);
+            string targetFilePath = Path.Combine(targetPath, relativePath);
 
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
-                var result = RunCommand("mklink", $"/H \"{targetFilePath}\" \"{filePath}\"");
-                if (result != 0) {
-                    throw new InvalidOperationException(
-                        $"Failed to create hard link for {filePath}. Exit code: {result}");
-                }
+            try {
+                FileSystem.CreateHardLink(targetFilePath, filePath);
             }
-            else {
-                var result = RunCommand("ln", $"\"{filePath}\" \"{targetFilePath}\"");
-                if (result != 0) {
-                    throw new InvalidOperationException(
-                        $"Failed to create hard link for {filePath}. Exit code: {result}");
-                }
+            catch (Exception ex) {
+                throw new InvalidOperationException(
+                    $"Failed to create hard link for {filePath}. {ex.Message}", ex);
             }
         }
     }
 
-    private static void CreateJunction(string sourceDirectory, string targetPath) {
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            throw new PlatformNotSupportedException("Junctions are only supported on Windows.");
-
-        var result = RunCommand("mklink", $"/J \"{targetPath}\" \"{sourceDirectory}\"");
-        if (result != 0)
-            throw new InvalidOperationException($"Failed to create junction. Exit code: {result}");
-    }
 
 
-    private static int RunCommand(string command, string arguments) {
+    internal static int RunCommand(string command, string arguments) {
         ProcessStartInfo processInfo;
 
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && command == "mklink")
-            // mklink is a built-in Windows command, must be run through cmd.exe
-        {
+        // mklink is a built-in Windows command, must be run through cmd.exe
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && command == "mklink") {
             processInfo = new ProcessStartInfo {
                 FileName = "cmd.exe",
                 Arguments = $"/C {command} {arguments}",
@@ -487,117 +485,14 @@ public static class Program {
         }
 
         using var process = Process.Start(processInfo);
-        if (process == null)
+        if (process == null) {
             throw new InvalidOperationException($"Failed to start process: {command}");
+        }
 
         process.WaitForExit();
         return process.ExitCode;
     }
 
-    private static string DetectCurrentOS() {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return "windows";
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) return "mac";
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) return "linux";
-
-        throw new PlatformNotSupportedException("Unsupported operating system");
-    }
-
-    private static string ConvertBuildTarget(string userBuildTarget) {
-        return userBuildTarget.ToLower() switch {
-            "windows" => "StandaloneWindows64",
-            "mac" => "StandaloneOSX",
-            "linux" => "StandaloneLinux64",
-            _ => throw new ArgumentException($"Unsupported build target: {userBuildTarget}")
-        };
-    }
-
-    private static int PromptAndInstallUnity(string version, bool nonInteractive = false) {
-        Logger.Warning("Unity {Version} was not found on this system", version);
-
-        if (nonInteractive) {
-            Logger.Information(
-                "Non-interactive mode: Automatically installing Unity Hub and Unity Editor...");
-        }
-        else {
-            Console.WriteLine("Would you like to automatically download and install Unity Hub and Unity Editor? (Y/n)");
-            var response = Console.ReadLine()?.Trim().ToLower();
-            if (response is "n" or "no") {
-                Logger.Information("Installation cancelled by user");
-                return 1;
-            }
-        }
-
-        try {
-            // Step 1: Install Unity Hub if not present
-            if (!IsUnityHubInstalled()) {
-                Logger.Information("Installing Unity Hub...");
-                var hubResult = InstallUnityHub(nonInteractive);
-                if (hubResult != 0) {
-                    Logger.Error("Failed to install Unity Hub");
-                    if (nonInteractive) {
-                        Logger.Error(
-                            "Non-interactive mode: Exiting due to Unity Hub installation failure");
-                        return hubResult;
-                    }
-
-                    return hubResult;
-                }
-
-                Logger.Information("Unity Hub installed successfully");
-            }
-            else Logger.Information("Unity Hub is already installed");
-
-            // Step 2: Install Unity Editor version via Hub
-            Logger.Information("Installing Unity Editor {Version}...", version);
-            var editorResult = InstallUnityEditor(version, nonInteractive);
-            if (editorResult != 0) {
-                Logger.Error("Failed to install Unity Editor {Version}", version);
-                if (nonInteractive) {
-                    Logger.Error("Non-interactive mode: Exiting due to Unity Editor installation failure");
-                    return editorResult;
-                }
-
-                return editorResult;
-            }
-
-            Logger.Information("Unity Editor {Version} installed successfully", version);
-            return 0;
-        }
-        catch (Exception ex) {
-            Logger.Error("Error during Unity installation: {Message}", ex.Message);
-            return 1;
-        }
-    }
-
-    private static bool IsUnityHubInstalled() {
-        return GetUnityHubExecutablePath() != null;
-    }
-
-    private static string? GetUnityHubExecutablePath() {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
-            var hubPaths = new[] {
-                @"C:\Program Files\Unity Hub\Unity Hub.exe",
-                @"C:\Program Files (x86)\Unity Hub\Unity Hub.exe"
-            };
-            return hubPaths.FirstOrDefault(File.Exists);
-        }
-
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
-            var hubPath = "/Applications/Unity Hub.app/Contents/MacOS/Unity Hub";
-            return File.Exists(hubPath) ? hubPath : null;
-        }
-
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) {
-            // Check common Linux installation paths
-            var hubPaths = new[] {
-                "/opt/unityhub/unityhub",
-                "/usr/bin/unityhub"
-            };
-            return hubPaths.FirstOrDefault(File.Exists);
-        }
-
-        return null;
-    }
 
     private static bool IsUnityHubRunning() {
         try {
@@ -611,11 +506,8 @@ public static class Program {
 
     private static bool StartUnityHub() {
         try {
-            var hubPath = GetUnityHubExecutablePath();
-            if (string.IsNullOrEmpty(hubPath)) return false;
-
             var processInfo = new ProcessStartInfo {
-                FileName = hubPath,
+                FileName = Config.TomlConfig.Global.UnityHubPath,
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 WindowStyle = ProcessWindowStyle.Hidden,
@@ -624,13 +516,15 @@ public static class Program {
             };
 
             var process = Process.Start(processInfo);
-            if (process == null) return false;
+            if (process == null) {
+                return false;
+            }
 
             // Consume Unity Hub output to prevent it from appearing in console
-            process.OutputDataReceived += (_, e) => {
+            process.OutputDataReceived += (_, _) => {
                 /* consume and discard */
             };
-            process.ErrorDataReceived += (_, e) => {
+            process.ErrorDataReceived += (_, _) => {
                 /* consume and discard */
             };
 
@@ -649,7 +543,7 @@ public static class Program {
     private static void StopUnityHub() {
         try {
             var processes = Process.GetProcessesByName("Unity Hub");
-            foreach (var process in processes)
+            foreach (var process in processes) {
                 try {
                     process.Kill();
                     process.WaitForExit(5000); // Wait up to 5 seconds
@@ -657,250 +551,32 @@ public static class Program {
                 catch {
                     // Ignore errors when killing processes
                 }
+            }
         }
         catch {
             // Ignore errors
         }
     }
 
-    private static string? GetUnityChangeset(string version) {
-        try {
-            var url = $"https://services.api.unity.com/unity/editor/release/v1/releases?version={version}";
 
-            using var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("User-Agent", "AssetBundleBuilder");
-
-            var response = client.GetAsync(url).Result;
-
-            if (!response.IsSuccessStatusCode) return null;
-
-            var responseContent = response.Content.ReadAsStringAsync().Result;
-
-            // Parse JSON to extract changeset from shortRevision
-            using var doc = JsonDocument.Parse(responseContent);
-            if (doc.RootElement.TryGetProperty("results", out var results) && results.GetArrayLength() > 0) {
-                var firstResult = results[0];
-                if (firstResult.TryGetProperty("shortRevision", out var shortRevision)) {
-                    var changesetValue = shortRevision.GetString();
-                    if (!string.IsNullOrEmpty(changesetValue)) {
-                        Logger.Debug("Found changeset: {Changeset}", changesetValue);
-                        return changesetValue;
-                    }
-                }
-            }
-
-            Logger.Debug("No changeset found in API response");
-            return null;
-        }
-        catch (Exception ex) {
-            Logger.Warning("Error querying Unity changeset via REST API: {Message}", ex.Message);
-            return null;
-        }
+    /// <summary>
+    ///     Bundle configuration for Unity multi-bundle building
+    /// </summary>
+    public record UnityBundleConfig {
+        public string bundleName { get; set; } = "";
+        public string assetDirectory { get; set; } = "";
+        public string outputDirectory { get; set; } = "";
+        public List<string>? buildTargets { get; set; } // null for targetless bundles, array for targeted bundles
+        public bool noPlatformSuffix { get; set; }
+        public string filenameFormat { get; set; } = "";
+        public List<string> includePatterns { get; set; } = [];
+        public List<string> excludePatterns { get; set; } = [];
     }
 
-    private static int InstallUnityHub(bool nonInteractive = false) {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return InstallUnityHubWindows();
-
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) return InstallUnityHubMac();
-
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) return InstallUnityHubLinux();
-
-        Logger.Error("Unsupported platform for automatic Unity Hub installation");
-        return 1;
-    }
-
-    private static int InstallUnityHubWindows() {
-        var hubUrl = "https://public-cdn.cloud.unity3d.com/hub/prod/UnityHubSetup.exe";
-        var tempFile = Path.Combine(Path.GetTempPath(), "UnityHubSetup.exe");
-
-        try {
-            // Download Unity Hub installer
-            Logger.Information("Downloading Unity Hub installer...");
-            using (var client = new HttpClient()) {
-                var response = client.GetAsync(hubUrl).Result;
-                response.EnsureSuccessStatusCode();
-
-                using (var fileStream = File.Create(tempFile)) {
-                    response.Content.CopyToAsync(fileStream).Wait();
-                }
-            }
-
-            // Run the installer silently
-            Logger.Information("Running Unity Hub installer...");
-            var processInfo = new ProcessStartInfo {
-                FileName = tempFile,
-                Arguments = "/S", // Silent installation
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            using (var process = Process.Start(processInfo)) {
-                if (process == null) {
-                    Logger.Error("Failed to start Unity Hub installer");
-                    return 1;
-                }
-
-                process.WaitForExit();
-
-                if (process.ExitCode != 0) {
-                    Logger.Error("Unity Hub installer failed with exit code: {ExitCode}",
-                        process.ExitCode);
-                    return process.ExitCode;
-                }
-            }
-
-            return 0;
-        }
-        catch (Exception ex) {
-            Logger.Error("Error installing Unity Hub: {Message}", ex.Message);
-            return 1;
-        }
-        finally {
-            // Clean up temp file
-            try {
-                if (File.Exists(tempFile)) File.Delete(tempFile);
-            }
-            catch {
-                // Ignore cleanup errors
-            }
-        }
-    }
-
-    private static int InstallUnityHubMac() {
-        var architecture = RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "darwin-arm64" : "darwin-x64";
-        var hubUrl = $"https://public-cdn.cloud.unity3d.com/hub/prod/UnityHub-{architecture}.dmg";
-        var tempFile = Path.Combine(Path.GetTempPath(), "UnityHub.dmg");
-
-        try {
-            Logger.Information("Downloading Unity Hub installer for {Architecture}...", architecture);
-            using (var client = new HttpClient()) {
-                var response = client.GetAsync(hubUrl).Result;
-                response.EnsureSuccessStatusCode();
-
-                using (var fileStream = File.Create(tempFile)) {
-                    response.Content.CopyToAsync(fileStream).Wait();
-                }
-            }
-
-            Logger.Information("Installing Unity Hub...");
-            var result = RunCommand("hdiutil", $"attach \"{tempFile}\" -nobrowse");
-            if (result != 0) {
-                Logger.Error("Failed to mount Unity Hub DMG");
-                return 1;
-            }
-
-            // Copy Unity Hub to Applications
-            result = RunCommand("cp", "-R \"/Volumes/Unity Hub/Unity Hub.app\" \"/Applications/\"");
-            if (result != 0) {
-                Logger.Error("Failed to copy Unity Hub to Applications");
-                return 1;
-            }
-
-            // Unmount DMG
-            RunCommand("hdiutil", "detach \"/Volumes/Unity Hub\"");
-
-            return 0;
-        }
-        catch (Exception ex) {
-            Logger.Error("Error installing Unity Hub: {Message}", ex.Message);
-            return 1;
-        }
-        finally {
-            try {
-                if (File.Exists(tempFile)) File.Delete(tempFile);
-            }
-            catch {
-                // Ignore cleanup errors
-            }
-        }
-    }
-
-    private static int InstallUnityHubLinux() {
-        Logger.Warning("Please install Unity Hub manually on Linux:");
-        Logger.Information("1. Download Unity Hub from https://unity3d.com/get-unity/download");
-        Logger.Information("2. Extract and run the AppImage or install via your package manager");
-        Logger.Information("3. Run this tool again once Unity Hub is installed");
-        return 1;
-    }
-
-    private static int InstallUnityEditor(string version, bool nonInteractive = false) {
-        try {
-            var hubPath = GetUnityHubExecutablePath();
-            if (string.IsNullOrEmpty(hubPath)) {
-                Logger.Error("Unity Hub not found. Cannot install Unity Editor");
-                if (nonInteractive) {
-                    Logger.Error("Non-interactive mode: Exiting due to Unity Hub not found");
-                    Environment.Exit(1);
-                }
-
-                return 1;
-            }
-
-            Logger.Information("Installing Unity Editor {Version} via Unity Hub CLI...", version);
-
-            // First try without changeset, then with if we can get it
-            var installArgs = $"-- --headless install --version {version}";
-
-            // Try to get changeset but don't fail if we can't
-            var changeset = GetUnityChangeset(version);
-            if (!string.IsNullOrEmpty(changeset)) {
-                installArgs += $" --changeset {changeset}";
-                Logger.Information("Using changeset: {Changeset}", changeset);
-            }
-            else Logger.Information("No changeset found, trying installation without it...");
-
-            // Use Unity Hub CLI to install the editor
-            var processInfo = new ProcessStartInfo {
-                FileName = hubPath,
-                Arguments = installArgs,
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true
-            };
-
-            using (var process = Process.Start(processInfo)) {
-                if (process == null) {
-                    Logger.Error("Failed to start Unity Hub CLI");
-                    return 1;
-                }
-
-                // Filter Unity Hub output - always ignore [Experiment] lines
-                process.OutputDataReceived += (_, e) => {
-                    if (!string.IsNullOrEmpty(e.Data) && !e.Data.TrimStart().StartsWith("[Experiment"))
-                        Logger.Debug("Unity Hub: {Output}", e.Data);
-                };
-                process.ErrorDataReceived += (_, e) => {
-                    if (!string.IsNullOrEmpty(e.Data) && !e.Data.TrimStart().StartsWith("[Experiment"))
-                        Logger.Debug("Unity Hub Error: {Output}", e.Data);
-                };
-
-                process.BeginOutputReadLine();
-                process.BeginErrorReadLine();
-                process.WaitForExit();
-
-                if (process.ExitCode != 0) {
-                    Logger.Error("Unity Hub CLI failed with exit code: {ExitCode}", process.ExitCode);
-                    if (nonInteractive) {
-                        Logger.Error("Non-interactive mode: Exiting due to Unity Hub CLI failure");
-                        Environment.Exit(process.ExitCode);
-                    }
-
-                    return process.ExitCode;
-                }
-            }
-
-            Logger.Information("Unity Editor {Version} installed successfully", version);
-            return 0;
-        }
-        catch (Exception ex) {
-            Logger.Error("Error installing Unity Editor: {Message}", ex.Message);
-            if (nonInteractive) {
-                Logger.Error("Non-interactive mode: Exiting due to error");
-                Environment.Exit(1);
-            }
-
-            return 1;
-        }
+    /// <summary>
+    ///     Container for multiple bundle configurations
+    /// </summary>
+    public class UnityMultiBundleConfig {
+        public List<UnityBundleConfig> bundles { get; set; } = [];
     }
 }

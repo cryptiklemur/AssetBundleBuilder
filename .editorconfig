@@ -15,5 +15,10 @@ indent_size = 4
 
 # ReSharper properties
 resharper_blank_lines_after_control_transfer_statements = 1
+resharper_braces_for_foreach = required
+resharper_braces_for_ifelse = required
 resharper_csharp_other_braces = end_of_line
 resharper_place_simple_embedded_statement_on_same_line = true
+
+# Microsoft .NET properties
+csharp_style_var_for_built_in_types = false:suggestion

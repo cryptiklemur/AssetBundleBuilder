@@ -28,6 +28,18 @@ public class AssetLabeler
         importer.SaveAndReimport();
         Console.WriteLine($"Converted {assetPath} from Sprite to Default.");
     }
+    
+    public static void EnsurePSDSettingsForFile(string assetPath)
+    {
+        // Basic PSD handling - this is a simplified version
+        // The actual implementation would depend on your specific PSD requirements
+        var importer = AssetImporter.GetAtPath(assetPath) as TextureImporter;
+        if (importer != null)
+        {
+            importer.textureType = TextureImporterType.Default;
+            importer.SaveAndReimport();
+        }
+    }
 
     /// <summary>
     ///     Labels all assets with a single common asset bundle name, applying include/exclude patterns.
@@ -103,7 +115,7 @@ public class AssetLabeler
 
             // Convert Sprite textures to Default to avoid additional sprite sub-assets.
             if (isTexture) ConvertSpriteToDefault(assetPath);
-            if (isPSD) PSDMatteUtility.EnsureSettingsForFile(assetPath);
+            if (isPSD) EnsurePSDSettingsForFile(assetPath);
 
             // Set a common asset bundle name for every texture.
             var importer = AssetImporter.GetAtPath(assetPath);

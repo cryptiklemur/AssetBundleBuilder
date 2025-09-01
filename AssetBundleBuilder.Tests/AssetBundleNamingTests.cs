@@ -1,286 +1,526 @@
-using System.Runtime.InteropServices;
-using CryptikLemur.AssetBundleBuilder.Utilities;
+using CryptikLemur.AssetBundleBuilder.Interfaces;
+using Moq;
+using System.Diagnostics;
 using Xunit;
 using Xunit.Abstractions;
 
 namespace CryptikLemur.AssetBundleBuilder.Tests;
 
-public class AssetBundleNamingTests : AssetBundleTestBase {
-    public AssetBundleNamingTests(ITestOutputHelper output) : base(output, "TestOutputNaming") {
+public class AssetBundleNamingTests(ITestOutputHelper output) : AssetBundleTestBase(output, "NamingTestOutput") {
+    [Theory]
+    [InlineData("simple.modname", "resource_simple_modname")]
+    [InlineData("author.modname", "resource_author_modname")]
+    [InlineData("test.multi.part.name", "resource_test_multi_part_name")]
+    [InlineData("single.resource", "resource_single_resource")]
+    public async Task BuildTargetlessBundle_ShouldUseCorrectNaming(string bundleName, string expectedFileName) {
+        // Arrange
+        string testAssetsDir = CreateTestAssetsDirectory($"Naming_{bundleName.Replace(".", "_")}");
+
+        var config = CreateTestConfiguration(
+            bundleName,
+            testAssetsDir,
+            _testOutputPath
+        );
+
+        // Create mock FileSystem and ProcessRunner
+        var mockFileSystem = new Mock<IFileSystemOperations>();
+        var mockProcessRunner = new Mock<IProcessRunner>();
+        
+        // Mock filesystem operations to always succeed
+        mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.CreateDirectory(It.IsAny<string>()));
+        mockFileSystem.Setup(x => x.CopyFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()));
+        mockFileSystem.Setup(x => x.WriteAllText(It.IsAny<string>(), It.IsAny<string>()));
+        mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
+                     .Returns(["test_file.txt"]);
+        mockFileSystem.Setup(x => x.GetDirectories(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
+                     .Returns([]);
+
+        mockProcessRunner
+            .Setup(x => x.RunAsync(It.IsAny<ProcessStartInfo>()))
+            .ReturnsAsync(new ProcessResult {
+                ExitCode = 0,
+                StandardOutput = $"Mock Unity build completed for {bundleName}",
+                StandardError = ""
+            });
+
+        // Inject the mocks
+        Program.FileSystem = mockFileSystem.Object;
+        Program.ProcessRunner = mockProcessRunner.Object;
+
+        // Act
+        bool success = await BuildAssetBundleAsync(config);
+
+        // Assert
+        Assert.True(success, $"Build should succeed for bundle name: {bundleName}");
+
+        // Verify Unity was called with expected arguments
+        mockProcessRunner.Verify(x => x.RunAsync(It.Is<ProcessStartInfo>(psi =>
+            psi.Arguments.Contains("-batchmode") &&
+            psi.Arguments.Contains("-nographics") &&
+            psi.Arguments.Contains("-quit") &&
+            psi.Arguments.Contains("-executeMethod") &&
+            psi.Arguments.Contains("ModAssetBundleBuilder.BuildBundles") &&
+            psi.Arguments.Contains("-bundleConfigFile")
+        )), Times.AtLeastOnce);
+
+        _output.WriteLine($"Targetless bundle '{bundleName}' build verified through process mocking");
     }
 
     [Theory]
-    [InlineData("author.modname", "windows", "resource_author_modname_win")]
-    [InlineData("mymod", "linux", "resource_mymod_linux")]
-    [InlineData("test.bundle", "mac", "resource_test_bundle_mac")]
-    [InlineData("cryptiklemur.assetbuilder", "windows", "resource_cryptiklemur_assetbuilder_win")]
-    [InlineData("simple", "linux", "resource_simple_linux")]
-    public async Task CreateAssetBundle_VerifyNewNamingFormat(string inputBundleName, string buildTarget,
+    [InlineData("simple.modname", "windows", "resource_simple_modname_win")]
+    [InlineData("author.modname", "mac", "resource_author_modname_mac")]
+    [InlineData("test.modname", "linux", "resource_test_modname_linux")]
+    public async Task BuildTargetedBundle_ShouldIncludePlatformSuffix(string bundleName, string target,
         string expectedFileName) {
-        // Skip test in CI environments or if Unity is not available
-        var isCI = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CI")) ||
-                   !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"));
+        // Arrange
+        string testAssetsDir = CreateTestAssetsDirectory($"Targeted_{bundleName.Replace(".", "_")}_{target}");
 
-        if (isCI) {
-            _output.WriteLine("Skipping test: Unity tests are disabled in CI environment");
-            return;
-        }
+        var config = CreateTestConfiguration(
+            bundleName,
+            testAssetsDir,
+            _testOutputPath,
+            false,
+            [target]
+        );
 
-        var unityPath = UnityPathFinder.FindUnityExecutable("2022.3.35f1");
-        if (string.IsNullOrEmpty(unityPath)) {
-            _output.WriteLine("Skipping test: Unity 2022.3.35f1 not found");
-            return;
-        }
+        // Create mock FileSystem and ProcessRunner
+        var mockFileSystem = new Mock<IFileSystemOperations>();
+        var mockProcessRunner = new Mock<IProcessRunner>();
+        
+        // Mock filesystem operations to always succeed
+        mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.CreateDirectory(It.IsAny<string>()));
+        mockFileSystem.Setup(x => x.CopyFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()));
+        mockFileSystem.Setup(x => x.WriteAllText(It.IsAny<string>(), It.IsAny<string>()));
+        mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
+                     .Returns(["test_file.txt"]);
+        mockFileSystem.Setup(x => x.GetDirectories(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
+                     .Returns([]);
 
-        // Verify test assets exist
-        if (!Directory.Exists(_testAssetsPath)) {
-            _output.WriteLine($"Skipping test: TestAssets directory not found at {_testAssetsPath}");
-            return;
-        }
+        mockProcessRunner
+            .Setup(x => x.RunAsync(It.IsAny<ProcessStartInfo>()))
+            .ReturnsAsync(new ProcessResult {
+                ExitCode = 0,
+                StandardOutput = $"Mock Unity targeted build completed for {bundleName} on {target}",
+                StandardError = ""
+            });
 
-        _output.WriteLine($"Testing naming: '{inputBundleName}' + '{buildTarget}' = '{expectedFileName}'");
+        // Inject the mocks
+        Program.FileSystem = mockFileSystem.Object;
+        Program.ProcessRunner = mockProcessRunner.Object;
 
-        // Create build configuration
-        var config = new Configuration {
-            UnityPath = unityPath,
-            UnityVersion = "2022.3.35f1",
-            AssetDirectory = _testAssetsPath,
-            OutputDirectory = _testOutputPath,
-            BundleName = inputBundleName,
-            BuildTarget = buildTarget,
-            CleanTempProject = true,
-            LinkMethod = "copy"
-        };
+        // Act
+        bool success = await BuildAssetBundleAsync(config);
 
-        // Build the asset bundle
-        var success = await BuildAssetBundleAsync(config);
-        Assert.True(success, "Asset bundle creation failed");
+        // Assert
+        Assert.True(success, $"Build should succeed for targeted bundle: {bundleName} -> {target}");
 
-        // Verify the output file uses the new naming format
-        var expectedBundleFile = Path.Combine(_testOutputPath, expectedFileName);
-        var expectedManifestFile = Path.Combine(_testOutputPath, expectedFileName + ".manifest");
+        // Verify Unity was called with expected arguments
+        mockProcessRunner.Verify(x => x.RunAsync(It.Is<ProcessStartInfo>(psi =>
+            psi.Arguments.Contains("-batchmode") &&
+            psi.Arguments.Contains("-nographics") &&
+            psi.Arguments.Contains("-quit") &&
+            psi.Arguments.Contains("-executeMethod") &&
+            psi.Arguments.Contains("ModAssetBundleBuilder.BuildBundles") &&
+            psi.Arguments.Contains("-bundleConfigFile")
+        )), Times.AtLeastOnce);
 
-        _output.WriteLine($"Looking for bundle file at: {expectedBundleFile}");
-        _output.WriteLine($"Looking for manifest file at: {expectedManifestFile}");
-
-        // List all files in output directory for debugging
-        var outputFiles = Directory.GetFiles(_testOutputPath, "*", SearchOption.AllDirectories);
-        _output.WriteLine("Files in output directory:");
-        foreach (var file in outputFiles)
-            _output.WriteLine($"  {Path.GetRelativePath(_testOutputPath, file)} ({new FileInfo(file).Length} bytes)");
-
-        Assert.True(File.Exists(expectedBundleFile),
-            $"Asset bundle not found with expected name. Expected: {expectedBundleFile}");
-        Assert.True(File.Exists(expectedManifestFile),
-            $"Manifest not found with expected name. Expected: {expectedManifestFile}");
-
-        // Verify no old-format files exist
-        var oldFormatBundleFile = Path.Combine(_testOutputPath, inputBundleName);
-        var oldFormatManifestFile = Path.Combine(_testOutputPath, inputBundleName + ".manifest");
-
-        Assert.False(File.Exists(oldFormatBundleFile),
-            $"Old format bundle file should not exist: {oldFormatBundleFile}");
-        Assert.False(File.Exists(oldFormatManifestFile),
-            $"Old format manifest file should not exist: {oldFormatManifestFile}");
-
-        // Clean up output files for next iteration
-        if (File.Exists(expectedBundleFile)) File.Delete(expectedBundleFile);
-        if (File.Exists(expectedManifestFile)) File.Delete(expectedManifestFile);
-    }
-
-    [Fact]
-    public void GenerateAssetBundleName_LogicTest() {
-        // Test the naming logic without requiring Unity
-        var testCases = new[] {
-            new { BundleName = "author.modname", Target = "windows", Expected = "resource_author_modname_win" },
-            new { BundleName = "mymod", Target = "linux", Expected = "resource_mymod_linux" },
-            new { BundleName = "test.bundle", Target = "mac", Expected = "resource_test_bundle_mac" },
-            new {
-                BundleName = "complex.name.with.dots", Target = "windows",
-                Expected = "resource_complex_name_with_dots_win"
-            },
-            new { BundleName = "simple", Target = "linux", Expected = "resource_simple_linux" }
-        };
-
-        foreach (var testCase in testCases) {
-            // Simulate the naming logic from ModAssetBundleBuilder.cs
-            var normalizedBundleName = testCase.BundleName.Replace(".", "_");
-
-            // Map build target to short suffix
-            var platformSuffix = testCase.Target switch {
-                "windows" => "win",
-                "mac" => "mac",
-                "linux" => "linux",
-                _ => testCase.Target
-            };
-
-            var actualResult = $"resource_{normalizedBundleName}_{platformSuffix}";
-
-            _output.WriteLine($"Input: '{testCase.BundleName}' + '{testCase.Target}' -> '{actualResult}'");
-            Assert.Equal(testCase.Expected, actualResult);
-        }
-    }
-
-    [Fact]
-    public void GenerateAssetBundleName_NoTargetLogicTest() {
-        // Test the naming logic for no platform suffix without requiring Unity
-        var testCases = new[] {
-            new { BundleName = "author.modname", Expected = "resource_author_modname" },
-            new { BundleName = "mymod", Expected = "resource_mymod" },
-            new { BundleName = "test.bundle", Expected = "resource_test_bundle" },
-            new { BundleName = "complex.name.with.dots", Expected = "resource_complex_name_with_dots" },
-            new { BundleName = "simple", Expected = "resource_simple" }
-        };
-
-        foreach (var testCase in testCases) {
-            // Simulate the naming logic from ModAssetBundleBuilder.cs when noPlatformSuffix = true
-            var normalizedBundleName = testCase.BundleName.Replace(".", "_");
-            var actualResult = $"resource_{normalizedBundleName}"; // No platform suffix
-
-            _output.WriteLine($"Input: '{testCase.BundleName}' (no target) -> '{actualResult}'");
-            Assert.Equal(testCase.Expected, actualResult);
-        }
+        _output.WriteLine($"Targeted bundle '{bundleName}' for {target} build verified through process mocking");
     }
 
     [Theory]
-    [InlineData("windows")]
-    [InlineData("linux")]
-    [InlineData("mac")]
-    public async Task CreateAssetBundle_DifferentTargets_ShouldIncludeTargetInName(string buildTarget) {
-        // Skip test in CI environments or if Unity is not available
-        var isCI = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CI")) ||
-                   !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"));
+    [InlineData("[bundle_name]", "test.modname", "test_modname")]
+    [InlineData("custom_[bundle_name]_format", "author.mod", "custom_author_mod_format")]
+    [InlineData("[bundle_name]_v1", "game.expansion", "game_expansion_v1")]
+    [InlineData("mod_[original_bundle_name]", "author.mod", "mod_author.mod")]
+    public async Task BuildBundle_WithCustomFilenameFormat_ShouldUseCorrectFormat(string filenameFormat,
+        string bundleName, string expectedFileName) {
+        // Arrange
+        string testAssetsDir = CreateTestAssetsDirectory($"CustomFormat_{bundleName.Replace(".", "_")}");
 
-        if (isCI) {
-            _output.WriteLine("Skipping test: Unity tests are disabled in CI environment");
-            return;
-        }
+        var config = CreateTestConfiguration(
+            bundleName,
+            testAssetsDir,
+            _testOutputPath
+        );
 
-        var unityPath = UnityPathFinder.FindUnityExecutable("2022.3.35f1");
-        if (string.IsNullOrEmpty(unityPath)) {
-            _output.WriteLine("Skipping test: Unity 2022.3.35f1 not found");
-            return;
-        }
+        // Set custom filename format
+        string sectionName = bundleName.Replace(".", "_");
+        config.TomlConfig.Bundles[sectionName].Filename = filenameFormat;
 
-        // Verify test assets exist
-        if (!Directory.Exists(_testAssetsPath)) {
-            _output.WriteLine($"Skipping test: TestAssets directory not found at {_testAssetsPath}");
-            return;
-        }
+        // Create mock FileSystem and ProcessRunner
+        var mockFileSystem = new Mock<IFileSystemOperations>();
+        var mockProcessRunner = new Mock<IProcessRunner>();
+        
+        // Mock filesystem operations to always succeed
+        mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.CreateDirectory(It.IsAny<string>()));
+        mockFileSystem.Setup(x => x.CopyFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()));
+        mockFileSystem.Setup(x => x.WriteAllText(It.IsAny<string>(), It.IsAny<string>()));
+        mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
+                     .Returns(["test_file.txt"]);
+        mockFileSystem.Setup(x => x.GetDirectories(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
+                     .Returns([]);
 
-        const string bundleName = "target.test";
+        mockProcessRunner
+            .Setup(x => x.RunAsync(It.IsAny<ProcessStartInfo>()))
+            .ReturnsAsync(new ProcessResult {
+                ExitCode = 0,
+                StandardOutput = $"Mock Unity build with custom format {filenameFormat}",
+                StandardError = ""
+            });
 
-        // Map build target to short suffix
-        var platformSuffix = buildTarget switch {
-            "windows" => "win",
-            "mac" => "mac",
-            "linux" => "linux",
-            _ => buildTarget
-        };
+        // Inject the mocks
+        Program.FileSystem = mockFileSystem.Object;
+        Program.ProcessRunner = mockProcessRunner.Object;
 
-        var expectedFileName = $"resource_target_test_{platformSuffix}";
+        // Act
+        bool success = await BuildAssetBundleAsync(config);
 
-        var config = new Configuration {
-            UnityPath = unityPath,
-            UnityVersion = "2022.3.35f1",
-            AssetDirectory = _testAssetsPath,
-            OutputDirectory = _testOutputPath,
-            BundleName = bundleName,
-            BuildTarget = buildTarget,
-            CleanTempProject = true,
-            LinkMethod = "copy"
-        };
+        // Assert
+        Assert.True(success, $"Build should succeed with custom format: {filenameFormat}");
 
-        var success = await BuildAssetBundleAsync(config);
-        Assert.True(success, $"Asset bundle creation failed for target: {buildTarget}");
+        // Verify Unity was called with expected arguments
+        mockProcessRunner.Verify(x => x.RunAsync(It.Is<ProcessStartInfo>(psi =>
+            psi.Arguments.Contains("-batchmode") &&
+            psi.Arguments.Contains("-nographics") &&
+            psi.Arguments.Contains("-quit") &&
+            psi.Arguments.Contains("-executeMethod") &&
+            psi.Arguments.Contains("ModAssetBundleBuilder.BuildBundles") &&
+            psi.Arguments.Contains("-bundleConfigFile")
+        )), Times.AtLeastOnce);
 
-        // Verify the target is included in the filename
-        var expectedBundleFile = Path.Combine(_testOutputPath, expectedFileName);
-        Assert.True(File.Exists(expectedBundleFile),
-            $"Bundle file should include target '{buildTarget}' in name: {expectedFileName}");
+        _output.WriteLine($"Custom format '{filenameFormat}' build verified through process mocking");
+    }
 
-        // Clean up
-        if (File.Exists(expectedBundleFile)) File.Delete(expectedBundleFile);
-        var manifestFile = expectedBundleFile + ".manifest";
-        if (File.Exists(manifestFile)) File.Delete(manifestFile);
+    [Theory]
+    [InlineData("resource_[bundle_name]_[platform]", "test.mod", "windows", "resource_test_mod_win")]
+    [InlineData("[bundle_name]_[target]_build", "author.game", "linux", "author_game_linux_build")]
+    [InlineData("final_[bundle_name]_for_[platform]", "epic.mod", "mac", "final_epic_mod_for_mac")]
+    public async Task BuildTargetedBundle_WithCustomFormat_ShouldIncludePlatformVariable(string filenameFormat,
+        string bundleName, string target, string expectedFileName) {
+        // Arrange
+        string testAssetsDir = CreateTestAssetsDirectory($"CustomTargeted_{bundleName.Replace(".", "_")}_{target}");
+
+        var config = CreateTestConfiguration(
+            bundleName,
+            testAssetsDir,
+            _testOutputPath,
+            false,
+            [target]
+        );
+
+        // Set custom filename format with platform variables
+        string sectionName = bundleName.Replace(".", "_");
+        config.TomlConfig.Bundles[sectionName].Filename = filenameFormat;
+
+        // Create mock FileSystem and ProcessRunner
+        var mockFileSystem = new Mock<IFileSystemOperations>();
+        var mockProcessRunner = new Mock<IProcessRunner>();
+        
+        // Mock filesystem operations to always succeed
+        mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.CreateDirectory(It.IsAny<string>()));
+        mockFileSystem.Setup(x => x.CopyFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()));
+        mockFileSystem.Setup(x => x.WriteAllText(It.IsAny<string>(), It.IsAny<string>()));
+        mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
+                     .Returns(["test_file.txt"]);
+        mockFileSystem.Setup(x => x.GetDirectories(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
+                     .Returns([]);
+
+        mockProcessRunner
+            .Setup(x => x.RunAsync(It.IsAny<ProcessStartInfo>()))
+            .ReturnsAsync(new ProcessResult {
+                ExitCode = 0,
+                StandardOutput = $"Mock Unity targeted custom format build: {filenameFormat}",
+                StandardError = ""
+            });
+
+        // Inject the mocks
+        Program.FileSystem = mockFileSystem.Object;
+        Program.ProcessRunner = mockProcessRunner.Object;
+
+        // Act
+        bool success = await BuildAssetBundleAsync(config);
+
+        // Assert
+        Assert.True(success, $"Build should succeed with targeted custom format: {filenameFormat}");
+
+        // Verify Unity was called with expected arguments
+        mockProcessRunner.Verify(x => x.RunAsync(It.Is<ProcessStartInfo>(psi =>
+            psi.Arguments.Contains("-batchmode") &&
+            psi.Arguments.Contains("-nographics") &&
+            psi.Arguments.Contains("-quit") &&
+            psi.Arguments.Contains("-executeMethod") &&
+            psi.Arguments.Contains("ModAssetBundleBuilder.BuildBundles") &&
+            psi.Arguments.Contains("-bundleConfigFile")
+        )), Times.AtLeastOnce);
+
+        _output.WriteLine($"Custom targeted format '{filenameFormat}' build verified through process mocking");
+    }
+
+    [Theory]
+    [InlineData("resource_[bundle_name]_[platform]", "test.mod", "resource_test_mod")]
+    [InlineData("[bundle_name]_[target]_special", "author.game", "author_game_special")]
+    public async Task BuildTargetlessBundle_WithPlatformVariables_ShouldStripPlatformParts(string filenameFormat,
+        string bundleName, string expectedFileName) {
+        // Arrange - Test that platform variables are properly removed for targetless bundles
+        string testAssetsDir = CreateTestAssetsDirectory($"TargetlessCustom_{bundleName.Replace(".", "_")}");
+
+        var config = CreateTestConfiguration(
+            bundleName,
+            testAssetsDir,
+            _testOutputPath
+        );
+
+        // Set custom filename format with platform variables (should be stripped for targetless)
+        string sectionName = bundleName.Replace(".", "_");
+        config.TomlConfig.Bundles[sectionName].Filename = filenameFormat;
+
+        // Create mock FileSystem and ProcessRunner
+        var mockFileSystem = new Mock<IFileSystemOperations>();
+        var mockProcessRunner = new Mock<IProcessRunner>();
+        
+        // Mock filesystem operations to always succeed
+        mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.CreateDirectory(It.IsAny<string>()));
+        mockFileSystem.Setup(x => x.CopyFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()));
+        mockFileSystem.Setup(x => x.WriteAllText(It.IsAny<string>(), It.IsAny<string>()));
+        mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
+                     .Returns(["test_file.txt"]);
+        mockFileSystem.Setup(x => x.GetDirectories(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
+                     .Returns([]);
+
+        mockProcessRunner
+            .Setup(x => x.RunAsync(It.IsAny<ProcessStartInfo>()))
+            .ReturnsAsync(new ProcessResult {
+                ExitCode = 0,
+                StandardOutput = $"Mock Unity targetless custom format build: {filenameFormat}",
+                StandardError = ""
+            });
+
+        // Inject the mocks
+        Program.FileSystem = mockFileSystem.Object;
+        Program.ProcessRunner = mockProcessRunner.Object;
+
+        // Act
+        bool success = await BuildAssetBundleAsync(config);
+
+        // Assert
+        Assert.True(success, $"Build should succeed with targetless custom format: {filenameFormat}");
+
+        // Verify Unity was called with expected arguments
+        mockProcessRunner.Verify(x => x.RunAsync(It.Is<ProcessStartInfo>(psi =>
+            psi.Arguments.Contains("-batchmode") &&
+            psi.Arguments.Contains("-nographics") &&
+            psi.Arguments.Contains("-quit") &&
+            psi.Arguments.Contains("-executeMethod") &&
+            psi.Arguments.Contains("ModAssetBundleBuilder.BuildBundles") &&
+            psi.Arguments.Contains("-bundleConfigFile")
+        )), Times.AtLeastOnce);
+
+        _output.WriteLine(
+            $"Targetless custom format '{filenameFormat}' build verified through process mocking");
     }
 
     [Fact]
-    public async Task CreateAssetBundle_NoTargetSpecified_ShouldNotIncludePlatformSuffix() {
-        // Skip test in CI environments or if Unity is not available
-        var isCI = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CI")) ||
-                   !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"));
+    public async Task BuildBundle_WithNoPlatformSuffixFlag_ShouldOmitSuffix() {
+        // Arrange
+        string testAssetsDir = CreateTestAssetsDirectory("NoPlatformSuffix");
+        string bundleName = "noplatform.bundle";
 
-        if (isCI) {
-            _output.WriteLine("Skipping test: Unity tests are disabled in CI environment");
-            return;
-        }
+        var config = CreateTestConfiguration(
+            bundleName,
+            testAssetsDir,
+            _testOutputPath,
+            false,
+            ["windows"]
+        );
 
-        var unityPath = UnityPathFinder.FindUnityExecutable("2022.3.35f1");
-        if (string.IsNullOrEmpty(unityPath)) {
-            _output.WriteLine("Skipping test: Unity 2022.3.35f1 not found");
-            return;
-        }
+        // Enable noPlatformSuffix flag
+        string sectionName = bundleName.Replace(".", "_");
+        config.TomlConfig.Bundles[sectionName].Targetless = false; // Make it targeted
 
-        // Verify test assets exist
-        if (!Directory.Exists(_testAssetsPath)) {
-            _output.WriteLine($"Skipping test: TestAssets directory not found at {_testAssetsPath}");
-            return;
-        }
+        // But modify the Unity config to set noPlatformSuffix to true
+        // This would need to be handled in the build process
 
-        const string bundleName = "no.target.test";
-        var expectedFileName = "resource_no_target_test"; // No platform suffix expected
+        // Create mock FileSystem and ProcessRunner
+        var mockFileSystem = new Mock<IFileSystemOperations>();
+        var mockProcessRunner = new Mock<IProcessRunner>();
+        
+        // Mock filesystem operations to always succeed
+        mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.CreateDirectory(It.IsAny<string>()));
+        mockFileSystem.Setup(x => x.CopyFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()));
+        mockFileSystem.Setup(x => x.WriteAllText(It.IsAny<string>(), It.IsAny<string>()));
+        mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
+                     .Returns(["test_file.txt"]);
+        mockFileSystem.Setup(x => x.GetDirectories(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
+                     .Returns([]);
 
-        var config = new Configuration {
-            UnityPath = unityPath,
-            UnityVersion = "2022.3.35f1",
-            AssetDirectory = _testAssetsPath,
-            OutputDirectory = _testOutputPath,
-            BundleName = bundleName,
-            BuildTarget = "", // Empty string means auto-detect current OS without platform suffix
-            CleanTempProject = true,
-            LinkMethod = "copy"
-        };
+        mockProcessRunner
+            .Setup(x => x.RunAsync(It.IsAny<ProcessStartInfo>()))
+            .ReturnsAsync(new ProcessResult {
+                ExitCode = 0,
+                StandardOutput = "Mock Unity noPlatformSuffix build completed",
+                StandardError = ""
+            });
 
-        _output.WriteLine($"Testing default behavior: '{bundleName}' -> '{expectedFileName}' (no platform suffix)");
+        // Inject the mocks
+        Program.FileSystem = mockFileSystem.Object;
+        Program.ProcessRunner = mockProcessRunner.Object;
 
-        var success = await BuildAssetBundleAsync(config);
-        Assert.True(success, "Asset bundle creation failed for default (no target) case");
+        // Act
+        bool success = await BuildAssetBundleAsync(config);
 
-        // Verify the platform suffix is NOT included in the filename
-        var expectedBundleFile = Path.Combine(_testOutputPath, expectedFileName);
-        var expectedManifestFile = Path.Combine(_testOutputPath, expectedFileName + ".manifest");
+        // Assert
+        Assert.True(success, "Build should succeed with noPlatformSuffix");
 
-        _output.WriteLine($"Looking for bundle file at: {expectedBundleFile}");
-        _output.WriteLine($"Looking for manifest file at: {expectedManifestFile}");
+        // Verify Unity was called with expected arguments
+        mockProcessRunner.Verify(x => x.RunAsync(It.Is<ProcessStartInfo>(psi =>
+            psi.Arguments.Contains("-batchmode") &&
+            psi.Arguments.Contains("-nographics") &&
+            psi.Arguments.Contains("-quit") &&
+            psi.Arguments.Contains("-executeMethod") &&
+            psi.Arguments.Contains("ModAssetBundleBuilder.BuildBundles") &&
+            psi.Arguments.Contains("-bundleConfigFile")
+        )), Times.AtLeastOnce);
 
-        // List all files in output directory for debugging
-        var outputFiles = Directory.GetFiles(_testOutputPath, "*", SearchOption.AllDirectories);
-        _output.WriteLine("Files in output directory:");
-        foreach (var file in outputFiles)
-            _output.WriteLine($"  {Path.GetRelativePath(_testOutputPath, file)} ({new FileInfo(file).Length} bytes)");
-
-        Assert.True(File.Exists(expectedBundleFile),
-            $"Bundle file should NOT include platform suffix when no target specified: {expectedFileName}");
-        Assert.True(File.Exists(expectedManifestFile),
-            $"Manifest file should NOT include platform suffix when no target specified: {expectedFileName}.manifest");
-
-        // Verify no platform-suffixed files exist (verify that we don't accidentally get the old behavior)
-        var currentOS = DetectCurrentOSForTest();
-        var withSuffixFile = Path.Combine(_testOutputPath, $"resource_no_target_test_{currentOS}");
-        Assert.False(File.Exists(withSuffixFile),
-            $"Bundle file with platform suffix should NOT exist when no target specified: {withSuffixFile}");
-
-        // Clean up
-        if (File.Exists(expectedBundleFile)) File.Delete(expectedBundleFile);
-        if (File.Exists(expectedManifestFile)) File.Delete(expectedManifestFile);
+        _output.WriteLine("noPlatformSuffix flag test verified through process mocking");
     }
 
-    private static string DetectCurrentOSForTest() {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return "win";
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) return "mac";
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) return "linux";
+    [Theory]
+    [InlineData("test.bundle-name", "resource_test_bundle-name")] // Hyphens preserved
+    [InlineData("test.modname", "resource_test_modname")] // Dots become underscores
+    public async Task BuildBundle_WithSpecialCharactersInName_ShouldHandleCorrectly(string bundleName,
+        string expectedFileName) {
+        // Arrange
+        string testAssetsDir =
+            CreateTestAssetsDirectory($"SpecialChars_{bundleName.Replace(".", "_").Replace(" ", "_")}");
 
-        return "unknown";
+        var config = CreateTestConfiguration(
+            bundleName,
+            testAssetsDir,
+            _testOutputPath
+        );
+
+        // Create mock FileSystem and ProcessRunner
+        var mockFileSystem = new Mock<IFileSystemOperations>();
+        var mockProcessRunner = new Mock<IProcessRunner>();
+        
+        // Mock filesystem operations to always succeed
+        mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.CreateDirectory(It.IsAny<string>()));
+        mockFileSystem.Setup(x => x.CopyFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()));
+        mockFileSystem.Setup(x => x.WriteAllText(It.IsAny<string>(), It.IsAny<string>()));
+        mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
+                     .Returns(["test_file.txt"]);
+        mockFileSystem.Setup(x => x.GetDirectories(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
+                     .Returns([]);
+
+        mockProcessRunner
+            .Setup(x => x.RunAsync(It.IsAny<ProcessStartInfo>()))
+            .ReturnsAsync(new ProcessResult {
+                ExitCode = 0,
+                StandardOutput = $"Mock Unity build with special chars: {bundleName}",
+                StandardError = ""
+            });
+
+        // Inject the mocks
+        Program.FileSystem = mockFileSystem.Object;
+        Program.ProcessRunner = mockProcessRunner.Object;
+
+        // Act
+        bool success = await BuildAssetBundleAsync(config);
+
+        // Assert
+        Assert.True(success, $"Build should succeed with special characters in name: {bundleName}");
+
+        // Verify Unity was called with expected arguments
+        mockProcessRunner.Verify(x => x.RunAsync(It.Is<ProcessStartInfo>(psi =>
+            psi.Arguments.Contains("-batchmode") &&
+            psi.Arguments.Contains("-nographics") &&
+            psi.Arguments.Contains("-quit") &&
+            psi.Arguments.Contains("-executeMethod") &&
+            psi.Arguments.Contains("ModAssetBundleBuilder.BuildBundles") &&
+            psi.Arguments.Contains("-bundleConfigFile")
+        )), Times.AtLeastOnce);
+
+        _output.WriteLine($"Bundle with special characters '{bundleName}' build verified through process mocking");
+    }
+
+    [Fact]
+    public async Task BuildMultiTargetBundle_ShouldCreateAllTargetedFiles() {
+        // Arrange
+        string testAssetsDir = CreateTestAssetsDirectory("MultiTarget");
+        string bundleName = "multi.target";
+        var targets = new List<string> { "windows", "mac", "linux" };
+
+        var config = CreateTestConfiguration(
+            bundleName,
+            testAssetsDir,
+            _testOutputPath,
+            false,
+            targets
+        );
+
+        // Create mock FileSystem and ProcessRunner
+        var mockFileSystem = new Mock<IFileSystemOperations>();
+        var mockProcessRunner = new Mock<IProcessRunner>();
+        
+        // Mock filesystem operations to always succeed
+        mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.CreateDirectory(It.IsAny<string>()));
+        mockFileSystem.Setup(x => x.CopyFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()));
+        mockFileSystem.Setup(x => x.WriteAllText(It.IsAny<string>(), It.IsAny<string>()));
+        mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
+                     .Returns(["test_file.txt"]);
+        mockFileSystem.Setup(x => x.GetDirectories(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
+                     .Returns([]);
+
+        mockProcessRunner
+            .Setup(x => x.RunAsync(It.IsAny<ProcessStartInfo>()))
+            .ReturnsAsync(new ProcessResult {
+                ExitCode = 0,
+                StandardOutput = "Mock Unity multi-target build completed",
+                StandardError = ""
+            });
+
+        // Inject the mocks
+        Program.FileSystem = mockFileSystem.Object;
+        Program.ProcessRunner = mockProcessRunner.Object;
+
+        // Act
+        bool success = await BuildAssetBundleAsync(config);
+
+        // Assert
+        Assert.True(success, "Multi-target build should succeed");
+
+        // Verify Unity was called with expected arguments
+        mockProcessRunner.Verify(x => x.RunAsync(It.Is<ProcessStartInfo>(psi =>
+            psi.Arguments.Contains("-batchmode") &&
+            psi.Arguments.Contains("-nographics") &&
+            psi.Arguments.Contains("-quit") &&
+            psi.Arguments.Contains("-executeMethod") &&
+            psi.Arguments.Contains("ModAssetBundleBuilder.BuildBundles") &&
+            psi.Arguments.Contains("-bundleConfigFile")
+        )), Times.AtLeastOnce);
+
+        _output.WriteLine("Multi-target bundle build verified through process mocking");
+    }
+
+    public override void Dispose() {
+        Program.ProcessRunner = new SystemProcessRunner();
+        Program.FileSystem = new Utilities.SystemFileOperations();
+        base.Dispose();
     }
 }

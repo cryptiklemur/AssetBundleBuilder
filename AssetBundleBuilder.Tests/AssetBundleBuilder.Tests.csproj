@@ -4,6 +4,8 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <IsPackable>false</IsPackable>
+        <RootNamespace>CryptikLemur.AssetBundleBuilder.Tests</RootNamespace>
+        <AssemblyName>CryptikLemur.AssetBundleBuilder.Tests</AssemblyName>
         <IsTestProject>true</IsTestProject>
     </PropertyGroup>
 
@@ -18,6 +20,7 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>
+        <PackageReference Include="Moq" Version="4.20.72"/>
     </ItemGroup>
 
     <ItemGroup>

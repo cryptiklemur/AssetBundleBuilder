@@ -4,32 +4,38 @@ namespace CryptikLemur.AssetBundleBuilder.Utilities;
 
 public static class PatternMatcher {
     public static bool IsExcluded(string relativePath, List<string>? excludePatterns) {
-        if (excludePatterns == null || excludePatterns.Count == 0)
+        if (excludePatterns == null || excludePatterns.Count == 0) {
             return false;
+        }
 
         // Normalize path separators for consistent matching
-        var normalizedPath = relativePath.Replace('\\', '/');
+        string normalizedPath = relativePath.Replace('\\', '/');
 
-        foreach (var pattern in excludePatterns) {
+        foreach (string pattern in excludePatterns) {
             // Convert glob pattern to regex
-            var regexPattern = GlobToRegex(pattern);
-            if (Regex.IsMatch(normalizedPath, regexPattern, RegexOptions.IgnoreCase)) return true;
+            string regexPattern = GlobToRegex(pattern);
+            if (Regex.IsMatch(normalizedPath, regexPattern, RegexOptions.IgnoreCase)) {
+                return true;
+            }
         }
 
         return false;
     }
 
     public static bool IsIncluded(string relativePath, List<string>? includePatterns) {
-        if (includePatterns == null || includePatterns.Count == 0)
+        if (includePatterns == null || includePatterns.Count == 0) {
             return true;
+        }
 
         // Normalize path separators for consistent matching
-        var normalizedPath = relativePath.Replace('\\', '/');
+        string normalizedPath = relativePath.Replace('\\', '/');
 
-        foreach (var pattern in includePatterns) {
+        foreach (string pattern in includePatterns) {
             // Convert glob pattern to regex
-            var regexPattern = GlobToRegex(pattern);
-            if (Regex.IsMatch(normalizedPath, regexPattern, RegexOptions.IgnoreCase)) return true;
+            string regexPattern = GlobToRegex(pattern);
+            if (Regex.IsMatch(normalizedPath, regexPattern, RegexOptions.IgnoreCase)) {
+                return true;
+            }
         }
 
         return false;
@@ -41,8 +47,8 @@ public static class PatternMatcher {
 
         // Handle special case of **/ - matches any number of directories (including zero)
         if (glob.StartsWith("**/")) {
-            var remainder = glob.Substring(3);
-            var escapedRemainder = Regex.Escape(remainder)
+            string remainder = glob.Substring(3);
+            string escapedRemainder = Regex.Escape(remainder)
                 .Replace("\\*", "[^/]*") // * matches any character except /
                 .Replace("\\?", "."); // ? matches single character
 
@@ -51,7 +57,7 @@ public static class PatternMatcher {
         }
 
         // Escape regex special characters except * and ?
-        var escaped = Regex.Escape(glob);
+        string escaped = Regex.Escape(glob);
 
         // Handle ** before * to avoid incorrect replacements
         escaped = escaped.Replace("\\*\\*", ".*"); // ** matches anything
@@ -59,12 +65,14 @@ public static class PatternMatcher {
         escaped = escaped.Replace("\\?", "."); // ? matches single character
 
         // If pattern doesn't start with /, it can match at any depth
-        if (!glob.StartsWith("/"))
+        if (!glob.StartsWith("/")) {
             escaped = "(^|.*/)" + escaped;
+        }
 
         // If pattern ends with /, match directories
-        if (glob.EndsWith("/"))
+        if (glob.EndsWith("/")) {
             escaped = escaped + ".*";
+        }
 
         return "^" + escaped + "$";
     }

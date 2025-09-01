@@ -8,7 +8,7 @@ public static class HashUtility {
         ArgumentNullException.ThrowIfNull(input);
 
         using var sha256Hash = SHA256.Create();
-        var bytes = sha256Hash.ComputeHash(Encoding.UTF8.GetBytes(input));
+        byte[] bytes = sha256Hash.ComputeHash(Encoding.UTF8.GetBytes(input));
         return Convert.ToHexString(bytes)[..8].ToLower();
     }
 }

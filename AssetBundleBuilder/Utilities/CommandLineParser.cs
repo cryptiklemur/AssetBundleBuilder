@@ -1,5 +1,4 @@
 using System.CommandLine;
-using System.CommandLine.Parsing;
 using CryptikLemur.AssetBundleBuilder.Config;
 using Tomlet;
 
@@ -14,15 +13,15 @@ public static class CommandLineParser {
         return await rootCommand.InvokeAsync(args);
     }
 
-    private static RootCommand BuildRootCommand() {
+    public static RootCommand BuildRootCommand() {
         var rootCommand = new RootCommand("Unity Asset Bundle Builder for RimWorld mods");
 
         // Positional arguments
-        var bundleConfigArg = new Argument<string?>(
+        var bundleConfigArg = new Argument<string[]>(
             "bundle-config",
-            description: "Bundle configuration name from TOML file",
-            getDefaultValue: () => null) {
-            Arity = ArgumentArity.ZeroOrOne
+            description: "Bundle configuration names from TOML file (can specify multiple)",
+            getDefaultValue: () => []) {
+            Arity = ArgumentArity.ZeroOrMore
         };
 
         // Options
@@ -31,10 +30,12 @@ public static class CommandLineParser {
             "Path to TOML configuration file");
 
 
-        var targetOption = new Option<string?>(
+        var targetOption = new Option<string[]>(
             ["--target", "-t"],
-            description: "Build target: windows, mac, linux, or none",
-            getDefaultValue: () => "none");
+            description: "Build targets: windows, mac, linux (defaults to all three)",
+            getDefaultValue: () => ["windows", "mac", "linux"]) {
+            AllowMultipleArgumentsPerToken = true
+        };
 
 
         var quietOption = new Option<bool>(
@@ -84,18 +85,31 @@ public static class CommandLineParser {
 
             // Check if help was invoked - if so, System.CommandLine already handled it, just exit
             if (result.CommandResult.Command == rootCommand &&
-                result.Tokens.Any(t => t.Value == "--help" || t.Value == "-h")) return;
-
-            // If no arguments provided, show help
-            if (result.Tokens.Count == 0) {
-                context.ExitCode = rootCommand.Invoke("-h");
+                result.Tokens.Any(t => t.Value == "--help" || t.Value == "-h")) {
                 return;
             }
 
-            // Build configuration from parsed arguments
-            var config = BuildConfiguration(result);
+            // If no arguments provided, try to use default config file
+            if (result.Tokens.Count == 0) {
+                string defaultConfigPath = Path.Combine(Directory.GetCurrentDirectory(), ".assetbundler.toml");
+                if (!File.Exists(defaultConfigPath)) {
+                    Console.WriteLine("No arguments provided and no .assetbundler.toml found in current directory.");
+                    Console.WriteLine(
+                        "Use --help for usage information or create a .assetbundler.toml configuration file.");
+                    context.ExitCode = 1;
+                    return;
+                }
 
-            if (config == null) {
+                Console.WriteLine($"No arguments provided, using default config: {defaultConfigPath}");
+            }
+
+            // Build configuration from parsed arguments
+            Configuration config;
+            try {
+                config = new Configuration(result);
+            }
+            catch (Exception ex) {
+                Console.WriteLine($"Error loading configuration: {ex.Message}");
                 context.ExitCode = 1;
                 return;
             }
@@ -121,9 +135,12 @@ public static class CommandLineParser {
             }
 
             // Validate configuration
-            var errors = ValidateConfiguration(config);
+            var errors = config.Validate();
             if (errors.Count > 0) {
-                foreach (var error in errors) Console.WriteLine($"Error: {error}");
+                foreach (string error in errors) {
+                    Console.WriteLine($"Error: {error}");
+                }
+
                 context.ExitCode = 1;
                 return;
             }
@@ -131,119 +148,11 @@ public static class CommandLineParser {
             // Initialize logging
             Program.InitializeLogging(config.GetVerbosity());
 
-            // Execute the build
-            context.ExitCode = Program.BuildAssetBundle(config);
+            // Execute the build using multi-bundle mode (works for single bundles too)
+            context.ExitCode = Program.BuildAssetBundles(config).GetAwaiter().GetResult();
         });
 
         return rootCommand;
-    }
-
-    private static Configuration? BuildConfiguration(ParseResult parseResult) {
-        var config = new Configuration();
-
-        // Check for auto-detected config file first
-        var autoConfigPath = Path.Combine(Directory.GetCurrentDirectory(), ".assetbundler.toml");
-        if (File.Exists(autoConfigPath) && !parseResult.HasOption("--config")) config.ConfigFile = autoConfigPath;
-
-        // Get positional arguments
-        config.BundleConfigName = parseResult.GetValue<string?>("bundle-config") ?? string.Empty;
-
-        // Get options
-        var configFile = parseResult.GetValue<string?>("--config");
-        if (!string.IsNullOrEmpty(configFile)) config.ConfigFile = configFile;
-
-        config.BuildTarget = parseResult.GetValue<string?>("--target") ?? "none";
-        config.Quiet = parseResult.GetValue<bool>("--quiet");
-        config.Verbose = parseResult.GetValue<bool>("--verbose");
-        config.Debug = parseResult.GetValue<bool>("--debug");
-        config.CiMode = parseResult.GetValue<bool>("--ci");
-        config.NonInteractive = parseResult.GetValue<bool>("--non-interactive");
-        config.ListBundles = parseResult.GetValue<bool>("--list-bundles");
-        config.DumpConfig = parseResult.GetValue<string?>("--dump-config");
-
-
-        // Load TOML configuration if specified
-        if (!string.IsNullOrEmpty(config.ConfigFile)) {
-            try {
-                var tomlContent = File.ReadAllText(config.ConfigFile);
-                var tomlConfig = TomletMain.To<TomlConfiguration>(tomlContent);
-
-                // Store original TOML config for serialization
-                config.OriginalTomlConfig = tomlConfig;
-
-                // Apply global configuration
-                if (tomlConfig.Global != null) Configuration.ApplyTomlSection(config, tomlConfig.Global);
-
-                // Auto-select bundle config if only one exists and none was specified
-                if (string.IsNullOrEmpty(config.BundleConfigName) && tomlConfig.Bundles.Count == 1) {
-                    config.BundleConfigName = tomlConfig.Bundles.Keys.First();
-                    Console.WriteLine($"Auto-selecting bundle configuration: {config.BundleConfigName}");
-                }
-
-                // Apply specific bundle configuration if specified
-                if (!string.IsNullOrEmpty(config.BundleConfigName) &&
-                    tomlConfig.Bundles.ContainsKey(config.BundleConfigName)) {
-                    var bundleConfig = tomlConfig.Bundles[config.BundleConfigName];
-                    Configuration.ApplyTomlSection(config, bundleConfig);
-                }
-            }
-            catch (Exception ex) {
-                Console.WriteLine($"Error loading configuration: {ex.Message}");
-                return null;
-            }
-        }
-
-        return config;
-    }
-
-    private static List<string> ValidateConfiguration(Configuration config) {
-        var errors = new List<string>();
-
-        // Basic validation - config file is required
-        if (string.IsNullOrEmpty(config.ConfigFile)) {
-            errors.Add(
-                "Configuration file is required (use --config or place .assetbundler.toml in current directory)");
-        }
-
-        // Bundle config name is required unless we're just listing bundles
-        if (string.IsNullOrEmpty(config.BundleConfigName) && !config.ListBundles)
-            errors.Add("Bundle configuration name is required");
-
-        // Validate that the bundle configuration exists in the TOML file
-        if (!string.IsNullOrEmpty(config.ConfigFile) && !string.IsNullOrEmpty(config.BundleConfigName)) {
-            try {
-                var tomlContent = File.ReadAllText(config.ConfigFile);
-                var tomlConfig = TomletMain.To<TomlConfiguration>(tomlContent);
-                
-                if (!tomlConfig.Bundles.ContainsKey(config.BundleConfigName)) {
-                    var availableBundles = string.Join(", ", tomlConfig.Bundles.Keys);
-                    errors.Add($"Bundle configuration '{config.BundleConfigName}' not found in {Path.GetFileName(config.ConfigFile)}. Available bundles: {availableBundles}");
-                }
-            }
-            catch (Exception ex) {
-                errors.Add($"Error reading configuration file: {ex.Message}");
-            }
-        }
-
-        // Validate build target
-        var validTargets = new[] { "windows", "mac", "linux", "none" };
-        if (!string.IsNullOrEmpty(config.BuildTarget) && !validTargets.Contains(config.BuildTarget))
-            errors.Add($"Invalid build target: \"{config.BuildTarget}\". Valid values are: windows, mac, linux, none");
-        
-        // If targetless is false, require a proper build target (not "none")
-        if (!config.Targetless && config.BuildTarget == "none") {
-            errors.Add("Bundle requires a specific build target (targetless is false). Please specify --target with windows, mac, or linux");
-        }
-
-
-        // Validate bundle name format
-        if (!string.IsNullOrEmpty(config.BundleName)) {
-            var lowerBundleName = config.BundleName.ToLower();
-            if (lowerBundleName.EndsWith(".framework") || lowerBundleName.EndsWith(".bundle"))
-                errors.Add($"Bundle name cannot end with .framework or .bundle: {lowerBundleName}");
-        }
-
-        return errors;
     }
 
     private static void ListBundlesInConfig(string configPath) {
@@ -253,7 +162,7 @@ public static class CommandLineParser {
         }
 
         try {
-            var content = File.ReadAllText(configPath);
+            string content = File.ReadAllText(configPath);
             var config = TomletMain.To<TomlConfiguration>(content);
 
             if (config.Bundles.Count == 0) {
@@ -265,31 +174,16 @@ public static class CommandLineParser {
             Console.WriteLine();
             foreach (var bundle in config.Bundles) {
                 Console.Write($"{bundle.Key}");
-                if (!string.IsNullOrEmpty(bundle.Value.Description)) Console.Write($" - {bundle.Value.Description}");
+                if (!string.IsNullOrEmpty(bundle.Value.Description)) {
+                    Console.Write($" - {bundle.Value.Description}");
+                }
+
                 Console.WriteLine();
             }
         }
         catch (Exception ex) {
             Console.WriteLine($"Error reading config file: {ex.Message}");
         }
-    }
-
-    private static bool HasOption(this ParseResult parseResult, string alias) {
-        return parseResult.Tokens.Any(t => t.Value == alias);
-    }
-
-    private static T? GetValue<T>(this ParseResult parseResult, string name) {
-        // Try to get from options first
-        foreach (var option in parseResult.CommandResult.Command.Options)
-            if (option.Aliases.Contains(name) || option.Name == name)
-                return parseResult.GetValueForOption(option) is T value ? value : default;
-
-        // Then try arguments
-        foreach (var argument in parseResult.CommandResult.Command.Arguments)
-            if (argument.Name == name)
-                return parseResult.GetValueForArgument(argument) is T value ? value : default;
-
-        return default;
     }
 
     private static void DumpConfigInFormat(Configuration config, string format) {
@@ -299,7 +193,7 @@ public static class CommandLineParser {
                 "toml" => config.ToToml(),
                 _ => throw new ArgumentException($"Unsupported format '{format}'. Supported formats: json, toml")
             };
-            
+
             Console.WriteLine(output);
         }
         catch (Exception ex) {
