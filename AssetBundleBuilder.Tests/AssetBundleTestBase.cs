@@ -64,11 +64,11 @@ public abstract class AssetBundleTestBase : IDisposable {
         string? tempProjectPath = null) {
         // Create TOML string and parse it properly
         string sectionName = bundleName.Replace(".", "_");
-        string tempProjectPathLine = tempProjectPath != null ? $"temp_project_path = \"{tempProjectPath}\"" : "";
+        string tempProjectPathLine = tempProjectPath != null ? $"temp_project_path = \"{tempProjectPath.Replace("\\", "\\\\")}\"" : "";
         string tomlContent = $@"
 [global]
 unity_version = ""{unityVersion ?? "2022.3.35f1"}""
-unity_editor_path = ""{unityEditorPath ?? FindTestUnityPath()}""
+unity_editor_path = ""{(unityEditorPath ?? FindTestUnityPath()).Replace("\\", "\\\\")}""
 unity_hub_path = """"
 {tempProjectPathLine}
 clean_temp_project = true
