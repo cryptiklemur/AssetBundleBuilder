@@ -15,15 +15,19 @@ unity_version = "2022.3.35f1"
 bundle_name = "author.modName"
 asset_directory = "Assets/"
 output_directory = "AssetBundles/"
-build_targets = ["windows", "linux", "mac"]
 link_method = "junction"  # or "copy", "symlink", "hardlink"
 
+# Note, if you are creating multiple assetbundles for a single mod, they need to have unique bundle_name's
 [bundles.textures]
+bundle_path = "author.modName"
+bundle_name = "author.modName_textures"
 filename = "resource_[bundle_name]_textures_[target]"
 exclude_patterns = ["*.shader"]
 targetless = true  # No platform suffix - creates single bundle for all platforms
 
 [bundles.shaders] # specify `--target windows` (or mac or linux) when running assetbundlebuilder to build for each platform
+bundle_path = "author.modName"
+bundle_name = "author.modName_textures"
 filename = "resource_[bundle_name]_shaders_[target]"
 include_patterns = ["*.shader"]
 targetless = false  # Platform-specific - creates separate bundle per platform
@@ -37,16 +41,6 @@ assetbundlebuilder --bundle-config textures
 
 # Override settings from command line
 assetbundlebuilder --bundle-config shaders --target window
-```
-
-### Basic CLI Usage (Alternative)
-
-```bash
-# Simple command line usage without config file
-assetbundlebuilder 2022.3.35f1 "Assets/" "author.modName" "AssetBundles/"
-
-# With additional options
-assetbundlebuilder 2022.3.35f1 "Assets/" "author.modName" "AssetBundles/" --target windows
 ```
 
 ## Installation
@@ -74,17 +68,16 @@ The TOML configuration file allows you to define multiple asset bundles with dif
 
 ```toml
 [global]
-unity_version = "2022.3.35f1"        # Unity version to use
-unity_path = "/path/to/Unity.exe"    # Or specify exact path
-output_directory = "Output"          # Default output directory
-build_targets = ["windows", "linux"] # Restrict allowed targets
-temp_project_path = "/tmp/unity"     # Custom temp directory
-clean_temp_project = false           # Clean temp project after building. Disabled by default for caching
-link_method = "copy"                 # How to link assets: copy/symlink/hardlink/junction
-log_file = "unity.log"               # Unity log output
+unity_version = "2022.3.35f1"         # Unity version to use
+unity_path = "/path/to/Unity.exe"     # Or specify exact path
+output_directory = "AssetBundles"     # Default output directory
+build_targets = ["windows", "linux"]  # Restrict allowed targets
+temp_project_path = "/tmp/unity"      # Custom temp directory
+clean_temp_project = false            # Clean temp project after building. Disabled by default for caching
+link_method = "copy"                  # How to link assets: copy/symlink/hardlink/junction
 exclude_patterns = ["*.meta", "*.tmp"] # Files to exclude
 include_patterns = ["*.png", "*.wav"]  # Files to include
-targetless = true                       # Default for bundles: no platform suffix
+targetless = true                      # Default for bundles: no platform suffix
 ```
 
 ### Bundle Configuration
@@ -94,10 +87,10 @@ targetless = true                       # Default for bundles: no platform suffi
 description = "My custom asset bundle"
 asset_directory = "Assets/MyBundle"
 bundle_name = "author.mybundle"
-output_directory = "CustomOutput"    # Override global output
-build_targets = ["windows"]          # Only allow specific targets
+output_directory = "1.6/AssetBundles"        # Override global output
+build_targets = ["windows"]                  # Only allow specific targets
 filename = "resource_[bundle_name]_[target]" # Custom filename format
-targetless = false                      # Platform-specific bundle (default: true)
+targetless = false                           # Platform-specific bundle (default: true)
 
 # Bundle-specific patterns
 exclude_patterns = ["*.backup"]
@@ -108,6 +101,8 @@ include_patterns = ["textures/*", "sounds/*"]
 
 #### Multiple Bundles with Different Targets
 
+> Note, if you are creating multiple assetbundles for a single mod, they need to have unique bundle_name's
+
 ```toml
 [global]
 unity_version = "2022.3.35f1"
@@ -115,17 +110,24 @@ link_method = "junction"
 
 [bundles.core]
 asset_directory = "Core/Assets"
-bundle_name = "mymod.core"
+bundle_name = "author.core_mod"
 
 [bundles.windows_only]
 asset_directory = "WindowsAssets"
-bundle_name = "mymod.windows"
+bundle_name = "author.myMod_windows"
 build_targets = ["windows"]  # Only for Windows
 
 [bundles.textures_hd]
 asset_directory = "HD/Textures"
-bundle_name = "mymod.hd"
+bundle_path = "author.myMod"
+bundle_name = "author.myMod_textures_high"
 exclude_patterns = ["*_low.png"]  # Exclude low-res versions
+
+[bundles.textures_low]
+asset_directory = "SD/Textures"
+bundle_path = "author.myMod"
+bundle_name = "mymod.low_textures"
+exclude_patterns = ["*_high.png"]  # Exclude low-res versions
 ```
 
 #### CI/CD Configuration
@@ -135,16 +137,14 @@ exclude_patterns = ["*_low.png"]  # Exclude low-res versions
   run: dotnet tool install --global CryptikLemur.AssetBundleBuilder
   
 - name: Build Asset Bundles
-  run: |
-    assetbundlebuilder --bundle-config textures --ci
-    assetbundlebuilder --bundle-config shaders --ci
+  run: assetbundlebuilder --ci
 ```
 
 ## Features
 
 ### Platform Support
 
-- **Build Targets**: `windows`, `mac`, `linux`, or `none` for platform-agnostic bundles
+- **Build Targets**: `windows`, `mac`, `linux`
 - **Build Restrictions**: Use `build_targets` array to limit which platforms a bundle can be built for
 
 ### Asset Management
@@ -172,22 +172,6 @@ exclude_patterns = ["*_low.png"]  # Exclude low-res versions
 - **Clean Builds**: Option to force fresh builds
 
 ## Command Line Reference
-
-While configuration files are recommended, all options are available via CLI:
-
-```
-assetbundlebuilder [options] [unity-version] [asset-dir] [bundle-name] [output-dir]
-```
-
-Common options:
-
-- `--config <file>`: Use configuration file
-- `--bundle-config <name>`: Select bundle from config
-- `--target <platform>`: Override build target
-- `--ci`: Enable CI mode
-- `--non-interactive`: Disable prompts
-- `-v, --verbose`: Increase verbosity
-- `-q, --quiet`: Decrease verbosity
 
 Run `assetbundlebuilder --help` for full options list.
 
