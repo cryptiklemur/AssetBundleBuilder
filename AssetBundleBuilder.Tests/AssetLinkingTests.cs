@@ -1,7 +1,8 @@
+using System.Diagnostics;
 using CryptikLemur.AssetBundleBuilder.Config;
 using CryptikLemur.AssetBundleBuilder.Interfaces;
+using CryptikLemur.AssetBundleBuilder.Utilities;
 using Moq;
-using System.Diagnostics;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -24,7 +25,7 @@ public class AssetLinkingTests(ITestOutputHelper output) : AssetBundleTestBase(o
         // Create mock FileSystem and ProcessRunner
         var mockFileSystem = new Mock<IFileSystemOperations>();
         var mockProcessRunner = new Mock<IProcessRunner>();
-        
+
         // Mock filesystem operations to always succeed
         mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
@@ -32,10 +33,10 @@ public class AssetLinkingTests(ITestOutputHelper output) : AssetBundleTestBase(o
         mockFileSystem.Setup(x => x.CopyFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()));
         mockFileSystem.Setup(x => x.WriteAllText(It.IsAny<string>(), It.IsAny<string>()));
         mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns(new[] { Path.Combine(sharedAssetsDir, "shared.txt") });
+            .Returns(new[] { Path.Combine(sharedAssetsDir, "shared.txt") });
         mockFileSystem.Setup(x => x.GetDirectories(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns(Array.Empty<string>());
-        
+            .Returns(Array.Empty<string>());
+
         mockProcessRunner
             .Setup(x => x.RunAsync(It.IsAny<ProcessStartInfo>()))
             .ReturnsAsync(new ProcessResult {
@@ -76,7 +77,7 @@ public class AssetLinkingTests(ITestOutputHelper output) : AssetBundleTestBase(o
         // Create mock FileSystem and ProcessRunner
         var mockFileSystem = new Mock<IFileSystemOperations>();
         var mockProcessRunner = new Mock<IProcessRunner>();
-        
+
         // Mock filesystem operations to always succeed
         mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
@@ -84,11 +85,11 @@ public class AssetLinkingTests(ITestOutputHelper output) : AssetBundleTestBase(o
         mockFileSystem.Setup(x => x.CopyFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()));
         mockFileSystem.Setup(x => x.WriteAllText(It.IsAny<string>(), It.IsAny<string>()));
         mockFileSystem.Setup(x => x.GetFiles(assetsDir1, It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns(["file1.txt"]);
+            .Returns(["file1.txt"]);
         mockFileSystem.Setup(x => x.GetFiles(assetsDir2, It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns(["file2.txt"]);
+            .Returns(["file2.txt"]);
         mockFileSystem.Setup(x => x.GetDirectories(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns([]);
+            .Returns([]);
 
         var config = new Configuration {
             BundleConfigNames = ["distinct1", "distinct2"],
@@ -120,7 +121,7 @@ public class AssetLinkingTests(ITestOutputHelper output) : AssetBundleTestBase(o
                 }
             }
         };
-        
+
         mockProcessRunner
             .Setup(x => x.RunAsync(It.IsAny<ProcessStartInfo>()))
             .ReturnsAsync(new ProcessResult {
@@ -162,7 +163,7 @@ public class AssetLinkingTests(ITestOutputHelper output) : AssetBundleTestBase(o
         // Create mock FileSystem and ProcessRunner
         var mockFileSystem = new Mock<IFileSystemOperations>();
         var mockProcessRunner = new Mock<IProcessRunner>();
-        
+
         // Mock filesystem operations to always succeed
         mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
@@ -170,9 +171,9 @@ public class AssetLinkingTests(ITestOutputHelper output) : AssetBundleTestBase(o
         mockFileSystem.Setup(x => x.CopyFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()));
         mockFileSystem.Setup(x => x.WriteAllText(It.IsAny<string>(), It.IsAny<string>()));
         mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns([originalFile]);
+            .Returns([originalFile]);
         mockFileSystem.Setup(x => x.GetDirectories(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns([]);
+            .Returns([]);
 
         var config = CreateTestConfiguration(
             "copy.test",
@@ -180,7 +181,7 @@ public class AssetLinkingTests(ITestOutputHelper output) : AssetBundleTestBase(o
             _testOutputPath
         );
         config.TomlConfig.Global.LinkMethod = linkMethod;
-        
+
         mockProcessRunner
             .Setup(x => x.RunAsync(It.IsAny<ProcessStartInfo>()))
             .ReturnsAsync(new ProcessResult {
@@ -221,16 +222,16 @@ public class AssetLinkingTests(ITestOutputHelper output) : AssetBundleTestBase(o
         // Create mock FileSystem and ProcessRunner
         var mockFileSystem = new Mock<IFileSystemOperations>();
         var mockProcessRunner = new Mock<IProcessRunner>();
-        
+
         // Mock filesystem operations to always succeed
         mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.CreateDirectory(It.IsAny<string>()));
         mockFileSystem.Setup(x => x.CreateSymbolicLink(It.IsAny<string>(), It.IsAny<string>()));
         mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns([Path.Combine(testAssetsDir, "symlink_test.txt")]);
+            .Returns([Path.Combine(testAssetsDir, "symlink_test.txt")]);
         mockFileSystem.Setup(x => x.GetDirectories(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns([]);
+            .Returns([]);
 
         var config = CreateTestConfiguration(
             "symlink.test",
@@ -238,7 +239,7 @@ public class AssetLinkingTests(ITestOutputHelper output) : AssetBundleTestBase(o
             _testOutputPath
         );
         config.TomlConfig.Global.LinkMethod = "symlink";
-        
+
         mockProcessRunner
             .Setup(x => x.RunAsync(It.IsAny<ProcessStartInfo>()))
             .ReturnsAsync(new ProcessResult {
@@ -279,15 +280,15 @@ public class AssetLinkingTests(ITestOutputHelper output) : AssetBundleTestBase(o
         // Create mock FileSystem and ProcessRunner
         var mockFileSystem = new Mock<IFileSystemOperations>();
         var mockProcessRunner = new Mock<IProcessRunner>();
-        
+
         // Mock filesystem operations to always succeed
         mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.CreateDirectory(It.IsAny<string>()));
         mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns([Path.Combine(testAssetsDir, "junction_test.txt")]);
+            .Returns([Path.Combine(testAssetsDir, "junction_test.txt")]);
         mockFileSystem.Setup(x => x.GetDirectories(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns([]);
+            .Returns([]);
 
         var config = CreateTestConfiguration(
             "junction.test",
@@ -295,7 +296,7 @@ public class AssetLinkingTests(ITestOutputHelper output) : AssetBundleTestBase(o
             _testOutputPath
         );
         config.TomlConfig.Global.LinkMethod = "junction";
-        
+
         // Mock junction behavior based on platform
         if (OperatingSystem.IsWindows()) {
             mockFileSystem.Setup(x => x.CreateJunction(It.IsAny<string>(), It.IsAny<string>()));
@@ -306,9 +307,10 @@ public class AssetLinkingTests(ITestOutputHelper output) : AssetBundleTestBase(o
                     StandardOutput = "Mock Unity build completed for junction method",
                     StandardError = ""
                 });
-        } else {
+        }
+        else {
             mockFileSystem.Setup(x => x.CreateJunction(It.IsAny<string>(), It.IsAny<string>()))
-                          .Throws<PlatformNotSupportedException>();
+                .Throws<PlatformNotSupportedException>();
         }
 
         // Inject the mocks
@@ -321,7 +323,7 @@ public class AssetLinkingTests(ITestOutputHelper output) : AssetBundleTestBase(o
         // Assert
         if (OperatingSystem.IsWindows()) {
             Assert.True(success, "Junction method should succeed on Windows with mocked filesystem");
-            
+
             // Verify Unity was called with expected arguments
             mockProcessRunner.Verify(x => x.RunAsync(It.Is<ProcessStartInfo>(psi =>
                 psi.Arguments.Contains("-batchmode") &&
@@ -331,14 +333,15 @@ public class AssetLinkingTests(ITestOutputHelper output) : AssetBundleTestBase(o
                 psi.Arguments.Contains("ModAssetBundleBuilder.BuildBundles") &&
                 psi.Arguments.Contains("-bundleConfigFile")
             )), Times.AtLeastOnce);
-            
+
             _output.WriteLine("Junction method succeeded on Windows through process mocking");
-        } else {
+        }
+        else {
             Assert.False(success, "Junction method should fail on non-Windows platforms");
-            
+
             // Verify Unity was not called due to junction failure
             mockProcessRunner.Verify(x => x.RunAsync(It.IsAny<ProcessStartInfo>()), Times.Never);
-            
+
             _output.WriteLine("Junction method correctly failed on non-Windows platform");
         }
     }
@@ -352,16 +355,16 @@ public class AssetLinkingTests(ITestOutputHelper output) : AssetBundleTestBase(o
         // Create mock FileSystem and ProcessRunner
         var mockFileSystem = new Mock<IFileSystemOperations>();
         var mockProcessRunner = new Mock<IProcessRunner>();
-        
+
         // Mock filesystem operations to always succeed
         mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.CreateDirectory(It.IsAny<string>()));
         mockFileSystem.Setup(x => x.CreateHardLink(It.IsAny<string>(), It.IsAny<string>()));
         mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns([Path.Combine(testAssetsDir, "hardlink_test.txt")]);
+            .Returns([Path.Combine(testAssetsDir, "hardlink_test.txt")]);
         mockFileSystem.Setup(x => x.GetDirectories(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns([]);
+            .Returns([]);
 
         var config = CreateTestConfiguration(
             "hardlink.test",
@@ -369,7 +372,7 @@ public class AssetLinkingTests(ITestOutputHelper output) : AssetBundleTestBase(o
             _testOutputPath
         );
         config.TomlConfig.Global.LinkMethod = "hardlink";
-        
+
         mockProcessRunner
             .Setup(x => x.RunAsync(It.IsAny<ProcessStartInfo>()))
             .ReturnsAsync(new ProcessResult {
@@ -410,7 +413,7 @@ public class AssetLinkingTests(ITestOutputHelper output) : AssetBundleTestBase(o
         // Create mock FileSystem and ProcessRunner (should not be called for invalid method)
         var mockFileSystem = new Mock<IFileSystemOperations>();
         var mockProcessRunner = new Mock<IProcessRunner>();
-        
+
         // Mock filesystem operations to always succeed (but shouldn't be reached)
         mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
@@ -433,7 +436,7 @@ public class AssetLinkingTests(ITestOutputHelper output) : AssetBundleTestBase(o
 
         // Assert
         Assert.False(success, "Bundle build should fail with invalid link method");
-        
+
         // Verify Unity was not called due to invalid link method
         mockProcessRunner.Verify(x => x.RunAsync(It.IsAny<ProcessStartInfo>()), Times.Never);
 
@@ -453,7 +456,7 @@ public class AssetLinkingTests(ITestOutputHelper output) : AssetBundleTestBase(o
         // Create mock FileSystem and ProcessRunner
         var mockFileSystem = new Mock<IFileSystemOperations>();
         var mockProcessRunner = new Mock<IProcessRunner>();
-        
+
         // Mock filesystem operations to always succeed
         mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
@@ -461,9 +464,9 @@ public class AssetLinkingTests(ITestOutputHelper output) : AssetBundleTestBase(o
         mockFileSystem.Setup(x => x.CopyFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()));
         mockFileSystem.Setup(x => x.WriteAllText(It.IsAny<string>(), It.IsAny<string>()));
         mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns([Path.Combine(testAssetsDir, "test_file.txt")]);
+            .Returns([Path.Combine(testAssetsDir, "test_file.txt")]);
         mockFileSystem.Setup(x => x.GetDirectories(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns([]);
+            .Returns([]);
 
         var config = new Configuration {
             BundleConfigNames = ["path1", "path2"],
@@ -495,7 +498,7 @@ public class AssetLinkingTests(ITestOutputHelper output) : AssetBundleTestBase(o
                 }
             }
         };
-        
+
         mockProcessRunner
             .Setup(x => x.RunAsync(It.IsAny<ProcessStartInfo>()))
             .ReturnsAsync(new ProcessResult {
@@ -526,10 +529,10 @@ public class AssetLinkingTests(ITestOutputHelper output) : AssetBundleTestBase(o
 
         _output.WriteLine("Path normalization correctly handled different path formats through process mocking");
     }
-    
+
     public override void Dispose() {
         Program.ProcessRunner = new SystemProcessRunner();
-        Program.FileSystem = new Utilities.SystemFileOperations();
+        Program.FileSystem = new SystemFileOperations();
         base.Dispose();
     }
 }

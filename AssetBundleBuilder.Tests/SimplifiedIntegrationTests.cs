@@ -1,8 +1,7 @@
-using CryptikLemur.AssetBundleBuilder.Config;
+using System.Diagnostics;
 using CryptikLemur.AssetBundleBuilder.Interfaces;
 using CryptikLemur.AssetBundleBuilder.Utilities;
 using Moq;
-using System.Diagnostics;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -28,7 +27,7 @@ public class SimplifiedIntegrationTests(ITestOutputHelper output)
         mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                      .Returns(new[] { Path.Combine(testAssetsDir, "test.txt") });
+            .Returns(new[] { Path.Combine(testAssetsDir, "test.txt") });
 
         // Create mock ProcessRunner
         var mockProcessRunner = new Mock<IProcessRunner>();
@@ -49,19 +48,19 @@ public class SimplifiedIntegrationTests(ITestOutputHelper output)
 
         // Assert  
         Assert.True(success, "Asset bundle build should succeed");
-        
+
         // The main verification is that the build succeeded, which means:
         // 1. Configuration was parsed correctly from TOML
         // 2. Bundle configuration was found and processed
         // 3. Unity project was created successfully  
         // 4. Asset linking worked
         // 5. Unity process executed and returned success (exit code 0)
-        
+
         _output.WriteLine("Unity mocking test completed successfully!");
         _output.WriteLine("TOML configuration parsing works");
         _output.WriteLine("Bundle dictionary lookup fixed");
         _output.WriteLine("Unity process execution works with shell scripts");
-        
+
         // Note: We can't verify actual asset bundle files since Unity execution is mocked
         // but we can verify the configuration and Unity process execution worked correctly
     }
@@ -86,7 +85,7 @@ public class SimplifiedIntegrationTests(ITestOutputHelper output)
         mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                      .Returns(new[] { Path.Combine(testAssetsDir, "test.txt") });
+            .Returns(new[] { Path.Combine(testAssetsDir, "test.txt") });
 
         // Create a mock ProcessRunner
         var mockProcessRunner = new Mock<IProcessRunner>();
@@ -107,7 +106,7 @@ public class SimplifiedIntegrationTests(ITestOutputHelper output)
 
         // Assert
         Assert.True(success, "Multi-target asset bundle build should succeed");
-        
+
         // Verify Unity was called with expected arguments
         mockProcessRunner.Verify(x => x.RunAsync(It.Is<ProcessStartInfo>(psi =>
             psi.Arguments.Contains("-batchmode") &&
@@ -126,7 +125,7 @@ public class SimplifiedIntegrationTests(ITestOutputHelper output)
         // Arrange
         string testAssetsDir1 = CreateTestAssetsDirectory("Bundle1");
         string bundleName1 = "test.bundle1";
-        
+
         var config = CreateTestConfiguration(
             bundleName1,
             testAssetsDir1,
@@ -138,7 +137,7 @@ public class SimplifiedIntegrationTests(ITestOutputHelper output)
         mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                      .Returns(new[] { Path.Combine(testAssetsDir1, "test.txt") });
+            .Returns(new[] { Path.Combine(testAssetsDir1, "test.txt") });
 
         // Create a mock ProcessRunner
         var mockProcessRunner = new Mock<IProcessRunner>();
@@ -159,7 +158,7 @@ public class SimplifiedIntegrationTests(ITestOutputHelper output)
 
         // Assert
         Assert.True(success, "Multiple bundle build should succeed");
-        
+
         // Verify Unity was called with expected arguments
         mockProcessRunner.Verify(x => x.RunAsync(It.Is<ProcessStartInfo>(psi =>
             psi.Arguments.Contains("-batchmode") &&
@@ -220,7 +219,7 @@ public class SimplifiedIntegrationTests(ITestOutputHelper output)
         mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                      .Returns(new[] { Path.Combine(testAssetsDir, "test.txt") });
+            .Returns(new[] { Path.Combine(testAssetsDir, "test.txt") });
 
         // Create a mock ProcessRunner
         var mockProcessRunner = new Mock<IProcessRunner>();
@@ -280,7 +279,7 @@ public class SimplifiedIntegrationTests(ITestOutputHelper output)
         mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                      .Returns(new[] { Path.Combine(testAssetsDir, "include.txt"), Path.Combine(testAssetsDir, "another.txt") });
+            .Returns(new[] { Path.Combine(testAssetsDir, "include.txt"), Path.Combine(testAssetsDir, "another.txt") });
 
         // Create a mock ProcessRunner
         var mockProcessRunner = new Mock<IProcessRunner>();
@@ -301,7 +300,7 @@ public class SimplifiedIntegrationTests(ITestOutputHelper output)
 
         // Assert
         Assert.True(success, "Build with include patterns should succeed");
-        
+
         // Verify Unity was called with expected arguments
         mockProcessRunner.Verify(x => x.RunAsync(It.Is<ProcessStartInfo>(psi =>
             psi.Arguments.Contains("-batchmode") &&
@@ -340,7 +339,7 @@ public class SimplifiedIntegrationTests(ITestOutputHelper output)
         mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                      .Returns(new[] { Path.Combine(testAssetsDir, "keep.txt") });
+            .Returns(new[] { Path.Combine(testAssetsDir, "keep.txt") });
 
         // Create a mock ProcessRunner
         var mockProcessRunner = new Mock<IProcessRunner>();
@@ -361,7 +360,7 @@ public class SimplifiedIntegrationTests(ITestOutputHelper output)
 
         // Assert
         Assert.True(success, "Build with exclude patterns should succeed");
-        
+
         // Verify Unity was called with expected arguments
         mockProcessRunner.Verify(x => x.RunAsync(It.Is<ProcessStartInfo>(psi =>
             psi.Arguments.Contains("-batchmode") &&
@@ -377,7 +376,7 @@ public class SimplifiedIntegrationTests(ITestOutputHelper output)
 
     public override void Dispose() {
         Program.ProcessRunner = new SystemProcessRunner();
-        Program.FileSystem = new Utilities.SystemFileOperations();
+        Program.FileSystem = new SystemFileOperations();
         base.Dispose();
     }
 }

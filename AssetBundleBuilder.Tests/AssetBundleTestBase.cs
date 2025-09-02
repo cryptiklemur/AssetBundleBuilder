@@ -1,5 +1,6 @@
 using System.CommandLine;
 using System.Diagnostics;
+using System.Text;
 using CryptikLemur.AssetBundleBuilder.Config;
 using CryptikLemur.AssetBundleBuilder.Utilities;
 using Tomlet;
@@ -42,8 +43,7 @@ public abstract class AssetBundleTestBase : IDisposable {
 
                     Directory.Delete(dir, true);
                     _output.WriteLine($"Cleaned up test directory: {dir}");
-                }
-                catch (Exception ex) {
+                } catch (Exception ex) {
                     _output.WriteLine($"Warning: Could not clean up {dir}: {ex.Message}");
                 }
             }
@@ -64,7 +64,9 @@ public abstract class AssetBundleTestBase : IDisposable {
         string? tempProjectPath = null) {
         // Create TOML string and parse it properly
         string sectionName = bundleName.Replace(".", "_");
-        string tempProjectPathLine = tempProjectPath != null ? $"temp_project_path = \"{tempProjectPath.Replace("\\", "\\\\")}\"" : "";
+        string tempProjectPathLine = tempProjectPath != null
+            ? $"temp_project_path = \"{tempProjectPath.Replace("\\", "\\\\")}\""
+            : "";
         string tomlContent = $@"
 [global]
 unity_version = ""{unityVersion ?? "2022.3.35f1"}""
@@ -122,8 +124,7 @@ targetless = {targetless.ToString().ToLower()}
             _output.WriteLine(testWriter.ToString());
 
             return exitCode == 0;
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
             _output.WriteLine($"Build failed with exception: {ex.Message}");
             _output.WriteLine($"Stack trace: {ex.StackTrace}");
             return false;
@@ -176,21 +177,20 @@ exit 0
         else {
             // Create simple script content for Unix
             string scriptContent = "#!/bin/bash\n" +
-                $"echo \"Mock Unity called with args: $*\" >> \"{logFile}\"\n" +
-                $"echo \"Working directory: $(pwd)\" >> \"{logFile}\"\n" +
-                $"echo \"Mock Unity execution completed successfully\" >> \"{logFile}\"\n" +
-                "echo \"Mock Unity execution completed successfully\"\n" +
-                "exit 0\n";
-            
+                                   $"echo \"Mock Unity called with args: $*\" >> \"{logFile}\"\n" +
+                                   $"echo \"Working directory: $(pwd)\" >> \"{logFile}\"\n" +
+                                   $"echo \"Mock Unity execution completed successfully\" >> \"{logFile}\"\n" +
+                                   "echo \"Mock Unity execution completed successfully\"\n" +
+                                   "exit 0\n";
+
             // Write with explicit UTF-8 without BOM and Unix line endings
-            File.WriteAllText(mockUnityPath, scriptContent, new System.Text.UTF8Encoding(false));
+            File.WriteAllText(mockUnityPath, scriptContent, new UTF8Encoding(false));
 
             // Make executable
             try {
                 var chmod = Process.Start("chmod", $"+x \"{mockUnityPath}\"");
                 chmod?.WaitForExit();
-            }
-            catch {
+            } catch {
                 // Ignore chmod errors
             }
         }

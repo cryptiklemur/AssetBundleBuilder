@@ -7,8 +7,9 @@ public static class TestUtilities {
     ///     Checks if a Unity installation supports a specific build target
     /// </summary>
     public static bool IsUnityBuildTargetSupported(string unityPath, string buildTarget) {
-        if (string.IsNullOrEmpty(unityPath) || !File.Exists(unityPath))
+        if (string.IsNullOrEmpty(unityPath) || !File.Exists(unityPath)) {
             return false;
+        }
 
         try {
             // Try a quick Unity command to check if the build target is available
@@ -22,14 +23,15 @@ public static class TestUtilities {
             };
 
             using var process = Process.Start(processInfo);
-            if (process == null) return false;
+            if (process == null) {
+                return false;
+            }
 
             process.WaitForExit(30000); // 30 second timeout
 
             // Exit code 0 means the build target is supported
             return process.ExitCode == 0;
-        }
-        catch {
+        } catch {
             return false;
         }
     }

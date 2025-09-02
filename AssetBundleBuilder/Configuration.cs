@@ -143,8 +143,7 @@ public class Configuration {
                             $"Bundle configuration '{bundleName}' not found in {Path.GetFileName(ConfigFile)}. Available bundles: {availableBundlesStr}");
                     }
                 }
-            }
-            catch (Exception ex) {
+            } catch (Exception ex) {
                 errors.Add($"Error reading configuration file: {ex.Message}");
             }
         }
@@ -174,7 +173,7 @@ public class Configuration {
         // Prevent circular references
         loadedPaths ??= new HashSet<string>();
         string absolutePath = Path.GetFullPath(configPath);
-        
+
         if (!loadedPaths.Add(absolutePath)) {
             throw new InvalidOperationException($"Circular reference detected in config extends: {absolutePath}");
         }
@@ -192,29 +191,31 @@ public class Configuration {
             string configDir = Path.GetDirectoryName(absolutePath) ?? Directory.GetCurrentDirectory();
             string extendedPath = Path.GetFullPath(Path.Combine(configDir, currentConfig.Global.Extends));
             string extendedConfigPath;
-            
+
             // Check if the extends value points to a directory
             if (Directory.Exists(extendedPath)) {
                 // It's a directory - look for same-named config first, then default config
-                
+
                 // First try config with same name as current file
                 string currentFileName = Path.GetFileName(configPath);
                 string sameNameConfigPath = Path.Combine(extendedPath, currentFileName);
-                
+
                 if (File.Exists(sameNameConfigPath)) {
                     extendedConfigPath = sameNameConfigPath;
-                } else {
+                }
+                else {
                     // Fall back to .assetbundler.toml in the target directory
                     extendedConfigPath = Path.Combine(extendedPath, ".assetbundler.toml");
                 }
-            } else {
+            }
+            else {
                 // It's a file path (or will fail if it doesn't exist)
                 extendedConfigPath = extendedPath;
             }
-            
+
             // Load the extended config first
             var baseConfig = LoadConfigWithExtends(extendedConfigPath, loadedPaths);
-            
+
             // Merge current config on top of base config
             currentConfig = MergeConfigurations(baseConfig, currentConfig);
         }
@@ -248,7 +249,9 @@ public class Configuration {
             // Don't inherit extends - it's already been processed
             Extends = null,
             UnityVersion = !string.IsNullOrEmpty(child.UnityVersion) ? child.UnityVersion : parent.UnityVersion,
-            UnityEditorPath = !string.IsNullOrEmpty(child.UnityEditorPath) ? child.UnityEditorPath : parent.UnityEditorPath,
+            UnityEditorPath = !string.IsNullOrEmpty(child.UnityEditorPath)
+                ? child.UnityEditorPath
+                : parent.UnityEditorPath,
             UnityHubPath = !string.IsNullOrEmpty(child.UnityHubPath) ? child.UnityHubPath : parent.UnityHubPath,
             AllowedTargets = child.AllowedTargets?.Count > 0 ? child.AllowedTargets : parent.AllowedTargets,
             TempProjectPath = child.TempProjectPath ?? parent.TempProjectPath,

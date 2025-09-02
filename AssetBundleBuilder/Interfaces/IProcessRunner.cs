@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 
 namespace CryptikLemur.AssetBundleBuilder.Interfaces;
 
@@ -16,10 +17,10 @@ public class ProcessResult {
 public class SystemProcessRunner : IProcessRunner {
     public async Task<ProcessResult> RunAsync(ProcessStartInfo startInfo) {
         using var process = new Process { StartInfo = startInfo };
-        
-        var outputBuilder = new System.Text.StringBuilder();
-        var errorBuilder = new System.Text.StringBuilder();
-        
+
+        var outputBuilder = new StringBuilder();
+        var errorBuilder = new StringBuilder();
+
         if (startInfo.RedirectStandardOutput) {
             process.OutputDataReceived += (_, e) => {
                 if (!string.IsNullOrEmpty(e.Data)) {
@@ -27,7 +28,7 @@ public class SystemProcessRunner : IProcessRunner {
                 }
             };
         }
-        
+
         if (startInfo.RedirectStandardError) {
             process.ErrorDataReceived += (_, e) => {
                 if (!string.IsNullOrEmpty(e.Data)) {
@@ -35,19 +36,19 @@ public class SystemProcessRunner : IProcessRunner {
                 }
             };
         }
-        
+
         process.Start();
-        
+
         if (startInfo.RedirectStandardOutput) {
             process.BeginOutputReadLine();
         }
-        
+
         if (startInfo.RedirectStandardError) {
             process.BeginErrorReadLine();
         }
-        
+
         await process.WaitForExitAsync();
-        
+
         return new ProcessResult {
             ExitCode = process.ExitCode,
             StandardOutput = outputBuilder.ToString(),

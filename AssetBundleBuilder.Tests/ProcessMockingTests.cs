@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using CryptikLemur.AssetBundleBuilder.Interfaces;
+using CryptikLemur.AssetBundleBuilder.Utilities;
 using Moq;
 using Xunit;
 using Xunit.Abstractions;
@@ -25,7 +26,7 @@ public class ProcessMockingTests(ITestOutputHelper output) : AssetBundleTestBase
         mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                      .Returns(new[] { Path.Combine(testAssetsDir, "test.txt") });
+            .Returns(new[] { Path.Combine(testAssetsDir, "test.txt") });
 
         // Create a mock ProcessRunner
         var mockProcessRunner = new Mock<IProcessRunner>();
@@ -79,7 +80,7 @@ public class ProcessMockingTests(ITestOutputHelper output) : AssetBundleTestBase
         mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                      .Returns(new[] { Path.Combine(testAssetsDir, "test.txt") });
+            .Returns(new[] { Path.Combine(testAssetsDir, "test.txt") });
 
         // Create a mock ProcessRunner that captures the ProcessStartInfo
         ProcessStartInfo? capturedStartInfo = null;
@@ -120,7 +121,7 @@ public class ProcessMockingTests(ITestOutputHelper output) : AssetBundleTestBase
 
     public override void Dispose() {
         Program.ProcessRunner = new SystemProcessRunner();
-        Program.FileSystem = new Utilities.SystemFileOperations();
+        Program.FileSystem = new SystemFileOperations();
         base.Dispose();
     }
 }

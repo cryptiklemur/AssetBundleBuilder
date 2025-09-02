@@ -21,4 +21,6 @@ resharper_csharp_other_braces = end_of_line
 resharper_place_simple_embedded_statement_on_same_line = true
 
 # Microsoft .NET properties
+csharp_new_line_before_catch = false
+csharp_new_line_before_finally = false
 csharp_style_var_for_built_in_types = false:suggestion

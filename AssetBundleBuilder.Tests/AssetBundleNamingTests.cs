@@ -1,6 +1,7 @@
-using CryptikLemur.AssetBundleBuilder.Interfaces;
-using Moq;
 using System.Diagnostics;
+using CryptikLemur.AssetBundleBuilder.Interfaces;
+using CryptikLemur.AssetBundleBuilder.Utilities;
+using Moq;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -26,7 +27,7 @@ public class AssetBundleNamingTests(ITestOutputHelper output) : AssetBundleTestB
         // Create mock FileSystem and ProcessRunner
         var mockFileSystem = new Mock<IFileSystemOperations>();
         var mockProcessRunner = new Mock<IProcessRunner>();
-        
+
         // Mock filesystem operations to always succeed
         mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
@@ -34,9 +35,9 @@ public class AssetBundleNamingTests(ITestOutputHelper output) : AssetBundleTestB
         mockFileSystem.Setup(x => x.CopyFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()));
         mockFileSystem.Setup(x => x.WriteAllText(It.IsAny<string>(), It.IsAny<string>()));
         mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns(["test_file.txt"]);
+            .Returns(["test_file.txt"]);
         mockFileSystem.Setup(x => x.GetDirectories(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns([]);
+            .Returns([]);
 
         mockProcessRunner
             .Setup(x => x.RunAsync(It.IsAny<ProcessStartInfo>()))
@@ -89,7 +90,7 @@ public class AssetBundleNamingTests(ITestOutputHelper output) : AssetBundleTestB
         // Create mock FileSystem and ProcessRunner
         var mockFileSystem = new Mock<IFileSystemOperations>();
         var mockProcessRunner = new Mock<IProcessRunner>();
-        
+
         // Mock filesystem operations to always succeed
         mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
@@ -97,9 +98,9 @@ public class AssetBundleNamingTests(ITestOutputHelper output) : AssetBundleTestB
         mockFileSystem.Setup(x => x.CopyFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()));
         mockFileSystem.Setup(x => x.WriteAllText(It.IsAny<string>(), It.IsAny<string>()));
         mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns(["test_file.txt"]);
+            .Returns(["test_file.txt"]);
         mockFileSystem.Setup(x => x.GetDirectories(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns([]);
+            .Returns([]);
 
         mockProcessRunner
             .Setup(x => x.RunAsync(It.IsAny<ProcessStartInfo>()))
@@ -155,7 +156,7 @@ public class AssetBundleNamingTests(ITestOutputHelper output) : AssetBundleTestB
         // Create mock FileSystem and ProcessRunner
         var mockFileSystem = new Mock<IFileSystemOperations>();
         var mockProcessRunner = new Mock<IProcessRunner>();
-        
+
         // Mock filesystem operations to always succeed
         mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
@@ -163,9 +164,9 @@ public class AssetBundleNamingTests(ITestOutputHelper output) : AssetBundleTestB
         mockFileSystem.Setup(x => x.CopyFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()));
         mockFileSystem.Setup(x => x.WriteAllText(It.IsAny<string>(), It.IsAny<string>()));
         mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns(["test_file.txt"]);
+            .Returns(["test_file.txt"]);
         mockFileSystem.Setup(x => x.GetDirectories(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns([]);
+            .Returns([]);
 
         mockProcessRunner
             .Setup(x => x.RunAsync(It.IsAny<ProcessStartInfo>()))
@@ -222,7 +223,7 @@ public class AssetBundleNamingTests(ITestOutputHelper output) : AssetBundleTestB
         // Create mock FileSystem and ProcessRunner
         var mockFileSystem = new Mock<IFileSystemOperations>();
         var mockProcessRunner = new Mock<IProcessRunner>();
-        
+
         // Mock filesystem operations to always succeed
         mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
@@ -230,9 +231,9 @@ public class AssetBundleNamingTests(ITestOutputHelper output) : AssetBundleTestB
         mockFileSystem.Setup(x => x.CopyFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()));
         mockFileSystem.Setup(x => x.WriteAllText(It.IsAny<string>(), It.IsAny<string>()));
         mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns(["test_file.txt"]);
+            .Returns(["test_file.txt"]);
         mockFileSystem.Setup(x => x.GetDirectories(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns([]);
+            .Returns([]);
 
         mockProcessRunner
             .Setup(x => x.RunAsync(It.IsAny<ProcessStartInfo>()))
@@ -286,7 +287,7 @@ public class AssetBundleNamingTests(ITestOutputHelper output) : AssetBundleTestB
         // Create mock FileSystem and ProcessRunner
         var mockFileSystem = new Mock<IFileSystemOperations>();
         var mockProcessRunner = new Mock<IProcessRunner>();
-        
+
         // Mock filesystem operations to always succeed
         mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
@@ -294,9 +295,9 @@ public class AssetBundleNamingTests(ITestOutputHelper output) : AssetBundleTestB
         mockFileSystem.Setup(x => x.CopyFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()));
         mockFileSystem.Setup(x => x.WriteAllText(It.IsAny<string>(), It.IsAny<string>()));
         mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns(["test_file.txt"]);
+            .Returns(["test_file.txt"]);
         mockFileSystem.Setup(x => x.GetDirectories(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns([]);
+            .Returns([]);
 
         mockProcessRunner
             .Setup(x => x.RunAsync(It.IsAny<ProcessStartInfo>()))
@@ -354,7 +355,7 @@ public class AssetBundleNamingTests(ITestOutputHelper output) : AssetBundleTestB
         // Create mock FileSystem and ProcessRunner
         var mockFileSystem = new Mock<IFileSystemOperations>();
         var mockProcessRunner = new Mock<IProcessRunner>();
-        
+
         // Mock filesystem operations to always succeed
         mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
@@ -362,9 +363,9 @@ public class AssetBundleNamingTests(ITestOutputHelper output) : AssetBundleTestB
         mockFileSystem.Setup(x => x.CopyFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()));
         mockFileSystem.Setup(x => x.WriteAllText(It.IsAny<string>(), It.IsAny<string>()));
         mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns(["test_file.txt"]);
+            .Returns(["test_file.txt"]);
         mockFileSystem.Setup(x => x.GetDirectories(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns([]);
+            .Returns([]);
 
         mockProcessRunner
             .Setup(x => x.RunAsync(It.IsAny<ProcessStartInfo>()))
@@ -415,7 +416,7 @@ public class AssetBundleNamingTests(ITestOutputHelper output) : AssetBundleTestB
         // Create mock FileSystem and ProcessRunner
         var mockFileSystem = new Mock<IFileSystemOperations>();
         var mockProcessRunner = new Mock<IProcessRunner>();
-        
+
         // Mock filesystem operations to always succeed
         mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
@@ -423,9 +424,9 @@ public class AssetBundleNamingTests(ITestOutputHelper output) : AssetBundleTestB
         mockFileSystem.Setup(x => x.CopyFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()));
         mockFileSystem.Setup(x => x.WriteAllText(It.IsAny<string>(), It.IsAny<string>()));
         mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns(["test_file.txt"]);
+            .Returns(["test_file.txt"]);
         mockFileSystem.Setup(x => x.GetDirectories(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns([]);
+            .Returns([]);
 
         mockProcessRunner
             .Setup(x => x.RunAsync(It.IsAny<ProcessStartInfo>()))
@@ -476,7 +477,7 @@ public class AssetBundleNamingTests(ITestOutputHelper output) : AssetBundleTestB
         // Create mock FileSystem and ProcessRunner
         var mockFileSystem = new Mock<IFileSystemOperations>();
         var mockProcessRunner = new Mock<IProcessRunner>();
-        
+
         // Mock filesystem operations to always succeed
         mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
@@ -484,9 +485,9 @@ public class AssetBundleNamingTests(ITestOutputHelper output) : AssetBundleTestB
         mockFileSystem.Setup(x => x.CopyFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()));
         mockFileSystem.Setup(x => x.WriteAllText(It.IsAny<string>(), It.IsAny<string>()));
         mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns(["test_file.txt"]);
+            .Returns(["test_file.txt"]);
         mockFileSystem.Setup(x => x.GetDirectories(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns([]);
+            .Returns([]);
 
         mockProcessRunner
             .Setup(x => x.RunAsync(It.IsAny<ProcessStartInfo>()))
@@ -521,7 +522,7 @@ public class AssetBundleNamingTests(ITestOutputHelper output) : AssetBundleTestB
 
     public override void Dispose() {
         Program.ProcessRunner = new SystemProcessRunner();
-        Program.FileSystem = new Utilities.SystemFileOperations();
+        Program.FileSystem = new SystemFileOperations();
         base.Dispose();
     }
 }

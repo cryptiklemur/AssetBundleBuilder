@@ -1,6 +1,7 @@
-using CryptikLemur.AssetBundleBuilder.Interfaces;
-using Moq;
 using System.Diagnostics;
+using CryptikLemur.AssetBundleBuilder.Interfaces;
+using CryptikLemur.AssetBundleBuilder.Utilities;
+using Moq;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -23,7 +24,7 @@ public class AssetBundleCreationTests(ITestOutputHelper output) : AssetBundleTes
         // Create mock FileSystem and ProcessRunner
         var mockFileSystem = new Mock<IFileSystemOperations>();
         var mockProcessRunner = new Mock<IProcessRunner>();
-        
+
         // Mock filesystem operations to always succeed
         mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
@@ -31,9 +32,9 @@ public class AssetBundleCreationTests(ITestOutputHelper output) : AssetBundleTes
         mockFileSystem.Setup(x => x.CopyFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()));
         mockFileSystem.Setup(x => x.WriteAllText(It.IsAny<string>(), It.IsAny<string>()));
         mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns([Path.Combine(testAssetsDir, "test_asset.txt")]);
+            .Returns([Path.Combine(testAssetsDir, "test_asset.txt")]);
         mockFileSystem.Setup(x => x.GetDirectories(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns([]);
+            .Returns([]);
 
         mockProcessRunner
             .Setup(x => x.RunAsync(It.IsAny<ProcessStartInfo>()))
@@ -52,7 +53,7 @@ public class AssetBundleCreationTests(ITestOutputHelper output) : AssetBundleTes
 
         // Assert
         Assert.True(success, "Asset bundle creation should succeed with valid inputs");
-        
+
         // Verify Unity was called with expected arguments
         mockProcessRunner.Verify(x => x.RunAsync(It.Is<ProcessStartInfo>(psi =>
             psi.Arguments.Contains("-batchmode") &&
@@ -94,7 +95,7 @@ public class AssetBundleCreationTests(ITestOutputHelper output) : AssetBundleTes
         // Create mock FileSystem and ProcessRunner
         var mockFileSystem = new Mock<IFileSystemOperations>();
         var mockProcessRunner = new Mock<IProcessRunner>();
-        
+
         // Mock filesystem operations to always succeed
         mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
@@ -102,13 +103,13 @@ public class AssetBundleCreationTests(ITestOutputHelper output) : AssetBundleTes
         mockFileSystem.Setup(x => x.CopyFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()));
         mockFileSystem.Setup(x => x.WriteAllText(It.IsAny<string>(), It.IsAny<string>()));
         mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns([
-                         Path.Combine(testAssetsDir, "root.txt"),
-                         Path.Combine(level1Dir, "level1.txt"),
-                         Path.Combine(level2Dir, "level2.txt")
-                     ]);
+            .Returns([
+                Path.Combine(testAssetsDir, "root.txt"),
+                Path.Combine(level1Dir, "level1.txt"),
+                Path.Combine(level2Dir, "level2.txt")
+            ]);
         mockFileSystem.Setup(x => x.GetDirectories(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns([level1Dir, level2Dir]);
+            .Returns([level1Dir, level2Dir]);
 
         mockProcessRunner
             .Setup(x => x.RunAsync(It.IsAny<ProcessStartInfo>()))
@@ -127,7 +128,7 @@ public class AssetBundleCreationTests(ITestOutputHelper output) : AssetBundleTes
 
         // Assert
         Assert.True(success, "Bundle creation should succeed with nested directories");
-        
+
         // Verify Unity was called with expected arguments
         mockProcessRunner.Verify(x => x.RunAsync(It.Is<ProcessStartInfo>(psi =>
             psi.Arguments.Contains("-batchmode") &&
@@ -163,7 +164,7 @@ public class AssetBundleCreationTests(ITestOutputHelper output) : AssetBundleTes
         // Create mock FileSystem and ProcessRunner
         var mockFileSystem = new Mock<IFileSystemOperations>();
         var mockProcessRunner = new Mock<IProcessRunner>();
-        
+
         // Mock filesystem operations to always succeed
         mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
@@ -171,15 +172,15 @@ public class AssetBundleCreationTests(ITestOutputHelper output) : AssetBundleTes
         mockFileSystem.Setup(x => x.CopyFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()));
         mockFileSystem.Setup(x => x.WriteAllText(It.IsAny<string>(), It.IsAny<string>()));
         mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns([
-                         Path.Combine(testAssetsDir, "text.txt"),
-                         Path.Combine(testAssetsDir, "data.json"),
-                         Path.Combine(testAssetsDir, "config.xml"),
-                         Path.Combine(testAssetsDir, "readme.md"),
-                         Path.Combine(testAssetsDir, "binary.dat")
-                     ]);
+            .Returns([
+                Path.Combine(testAssetsDir, "text.txt"),
+                Path.Combine(testAssetsDir, "data.json"),
+                Path.Combine(testAssetsDir, "config.xml"),
+                Path.Combine(testAssetsDir, "readme.md"),
+                Path.Combine(testAssetsDir, "binary.dat")
+            ]);
         mockFileSystem.Setup(x => x.GetDirectories(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns([]);
+            .Returns([]);
 
         mockProcessRunner
             .Setup(x => x.RunAsync(It.IsAny<ProcessStartInfo>()))
@@ -198,7 +199,7 @@ public class AssetBundleCreationTests(ITestOutputHelper output) : AssetBundleTes
 
         // Assert
         Assert.True(success, "Bundle creation should succeed with different file types");
-        
+
         // Verify Unity was called with expected arguments
         mockProcessRunner.Verify(x => x.RunAsync(It.Is<ProcessStartInfo>(psi =>
             psi.Arguments.Contains("-batchmode") &&
@@ -231,16 +232,16 @@ public class AssetBundleCreationTests(ITestOutputHelper output) : AssetBundleTes
         // Create mock FileSystem and ProcessRunner
         var mockFileSystem = new Mock<IFileSystemOperations>();
         var mockProcessRunner = new Mock<IProcessRunner>();
-        
+
         // Mock filesystem operations - empty directory scenario
         mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.CreateDirectory(It.IsAny<string>()));
         mockFileSystem.Setup(x => x.WriteAllText(It.IsAny<string>(), It.IsAny<string>()));
         mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns([]); // Empty array - no files
+            .Returns([]); // Empty array - no files
         mockFileSystem.Setup(x => x.GetDirectories(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns([]); // Empty array - no directories
+            .Returns([]); // Empty array - no directories
 
         mockProcessRunner
             .Setup(x => x.RunAsync(It.IsAny<ProcessStartInfo>()))
@@ -309,7 +310,7 @@ public class AssetBundleCreationTests(ITestOutputHelper output) : AssetBundleTes
 
         // Assert
         Assert.True(success, "Bundle creation should handle long paths");
-        
+
         // Verify Unity was called with expected arguments
         mockProcessRunner.Verify(x => x.RunAsync(It.Is<ProcessStartInfo>(psi =>
             psi.Arguments.Contains("-batchmode") &&
@@ -344,7 +345,7 @@ public class AssetBundleCreationTests(ITestOutputHelper output) : AssetBundleTes
         // Create mock FileSystem and ProcessRunner
         var mockFileSystem = new Mock<IFileSystemOperations>();
         var mockProcessRunner = new Mock<IProcessRunner>();
-        
+
         // Mock filesystem operations to always succeed
         mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
@@ -352,14 +353,14 @@ public class AssetBundleCreationTests(ITestOutputHelper output) : AssetBundleTes
         mockFileSystem.Setup(x => x.CopyFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()));
         mockFileSystem.Setup(x => x.WriteAllText(It.IsAny<string>(), It.IsAny<string>()));
         mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns([
-                         Path.Combine(testAssetsDir, "file with spaces.txt"),
-                         Path.Combine(testAssetsDir, "file_with_underscores.txt"),
-                         Path.Combine(testAssetsDir, "file-with-hyphens.txt"),
-                         Path.Combine(testAssetsDir, "file.with.dots.txt")
-                     ]);
+            .Returns([
+                Path.Combine(testAssetsDir, "file with spaces.txt"),
+                Path.Combine(testAssetsDir, "file_with_underscores.txt"),
+                Path.Combine(testAssetsDir, "file-with-hyphens.txt"),
+                Path.Combine(testAssetsDir, "file.with.dots.txt")
+            ]);
         mockFileSystem.Setup(x => x.GetDirectories(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns([]);
+            .Returns([]);
 
         mockProcessRunner
             .Setup(x => x.RunAsync(It.IsAny<ProcessStartInfo>()))
@@ -378,7 +379,7 @@ public class AssetBundleCreationTests(ITestOutputHelper output) : AssetBundleTes
 
         // Assert
         Assert.True(success, "Bundle creation should handle special characters in filenames");
-        
+
         // Verify Unity was called with expected arguments
         mockProcessRunner.Verify(x => x.RunAsync(It.Is<ProcessStartInfo>(psi =>
             psi.Arguments.Contains("-batchmode") &&
@@ -411,22 +412,22 @@ public class AssetBundleCreationTests(ITestOutputHelper output) : AssetBundleTes
         // Create mock FileSystem and ProcessRunner
         var mockFileSystem = new Mock<IFileSystemOperations>();
         var mockProcessRunner = new Mock<IProcessRunner>();
-        
+
         // Mock filesystem operations to always succeed
         mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.CreateDirectory(It.IsAny<string>()));
         mockFileSystem.Setup(x => x.CopyFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()));
         mockFileSystem.Setup(x => x.WriteAllText(It.IsAny<string>(), It.IsAny<string>()));
-        
+
         // Generate list of mock files for GetFiles call
-        var mockFiles = Enumerable.Range(0, 100)
-                                 .Select(i => Path.Combine(testAssetsDir, $"file_{i:D3}.txt"))
-                                 .ToArray();
+        string[] mockFiles = Enumerable.Range(0, 100)
+            .Select(i => Path.Combine(testAssetsDir, $"file_{i:D3}.txt"))
+            .ToArray();
         mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns(mockFiles);
+            .Returns(mockFiles);
         mockFileSystem.Setup(x => x.GetDirectories(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
-                     .Returns([]);
+            .Returns([]);
 
         mockProcessRunner
             .Setup(x => x.RunAsync(It.IsAny<ProcessStartInfo>()))
@@ -445,7 +446,7 @@ public class AssetBundleCreationTests(ITestOutputHelper output) : AssetBundleTes
 
         // Assert
         Assert.True(success, "Bundle creation should handle large number of files");
-        
+
         // Verify Unity was called with expected arguments
         mockProcessRunner.Verify(x => x.RunAsync(It.Is<ProcessStartInfo>(psi =>
             psi.Arguments.Contains("-batchmode") &&
@@ -481,7 +482,7 @@ public class AssetBundleCreationTests(ITestOutputHelper output) : AssetBundleTes
         // Create mock FileSystem and ProcessRunner
         var mockFileSystem = new Mock<IFileSystemOperations>();
         var mockProcessRunner = new Mock<IProcessRunner>();
-        
+
         // Mock filesystem operations to always succeed
         mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
         mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns(true);
@@ -489,23 +490,26 @@ public class AssetBundleCreationTests(ITestOutputHelper output) : AssetBundleTes
         mockFileSystem.Setup(x => x.CopyFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()));
         mockFileSystem.Setup(x => x.CreateSymbolicLink(It.IsAny<string>(), It.IsAny<string>()));
         mockFileSystem.Setup(x => x.CreateJunction(It.IsAny<string>(), It.IsAny<string>()));
-        
+
         // Setup hardlink to fail for hardlink method, succeed for others
         if (linkMethod == "hardlink") {
             mockFileSystem.Setup(x => x.CreateHardLink(It.IsAny<string>(), It.IsAny<string>()))
-                         .Throws(new InvalidOperationException("Hardlink creation failed"));
-        } else {
+                .Throws(new InvalidOperationException("Hardlink creation failed"));
+        }
+        else {
             mockFileSystem.Setup(x => x.CreateHardLink(It.IsAny<string>(), It.IsAny<string>()));
         }
-        
+
         // Junction might fail on non-Windows
         bool shouldSucceed = !(linkMethod == "junction" && !OperatingSystem.IsWindows());
-        
+
         mockProcessRunner
             .Setup(x => x.RunAsync(It.IsAny<ProcessStartInfo>()))
             .ReturnsAsync(new ProcessResult {
                 ExitCode = shouldSucceed ? 0 : 1,
-                StandardOutput = shouldSucceed ? $"Mock Unity {linkMethod} build completed" : $"{linkMethod} not supported",
+                StandardOutput = shouldSucceed
+                    ? $"Mock Unity {linkMethod} build completed"
+                    : $"{linkMethod} not supported",
                 StandardError = shouldSucceed ? "" : "Link method not supported on this platform"
             });
 
@@ -525,7 +529,7 @@ public class AssetBundleCreationTests(ITestOutputHelper output) : AssetBundleTes
             else if (linkMethod == "hardlink") {
                 // Hardlink should now succeed with proper filesystem mocking
                 Assert.True(success, $"Bundle creation with {linkMethod} should succeed");
-                
+
                 // Verify Unity was called
                 mockProcessRunner.Verify(x => x.RunAsync(It.Is<ProcessStartInfo>(psi =>
                     psi.Arguments.Contains("-batchmode") &&
@@ -534,26 +538,25 @@ public class AssetBundleCreationTests(ITestOutputHelper output) : AssetBundleTes
                     psi.Arguments.Contains("-executeMethod") &&
                     psi.Arguments.Contains("ModAssetBundleBuilder.BuildBundles")
                 )), Times.AtLeastOnce);
-                
+
                 _output.WriteLine($"{linkMethod} method succeeded with mocked filesystem");
             }
             else {
                 Assert.True(success, $"Bundle creation with {linkMethod} should succeed");
-                
+
                 // Verify Unity was called
                 mockProcessRunner.Verify(x => x.RunAsync(It.IsAny<ProcessStartInfo>()), Times.AtLeastOnce);
-                
+
                 _output.WriteLine($"{linkMethod} link method verified through process mocking");
             }
-        }
-        catch (PlatformNotSupportedException) {
+        } catch (PlatformNotSupportedException) {
             _output.WriteLine($"{linkMethod} not supported on this platform (expected)");
         }
     }
 
     public override void Dispose() {
         Program.ProcessRunner = new SystemProcessRunner();
-        Program.FileSystem = new Utilities.SystemFileOperations();
+        Program.FileSystem = new SystemFileOperations();
         base.Dispose();
     }
 }

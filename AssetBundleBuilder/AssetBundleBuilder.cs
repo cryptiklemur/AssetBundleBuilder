@@ -22,8 +22,7 @@ public static class Program {
                 .MinimumLevel.Information()
                 .WriteTo.Console(outputTemplate: "{Message:lj}{NewLine}")
                 .CreateLogger();
-        }
-        catch {
+        } catch {
             // Fallback to a minimal logger if console setup fails
             return new LoggerConfiguration()
                 .MinimumLevel.Information()
@@ -47,8 +46,7 @@ public static class Program {
                 .CreateLogger();
 
             Log.Logger = Logger;
-        }
-        catch {
+        } catch {
             // If logging initialization fails, keep the existing logger
             // This ensures we never break the application due to logging issues
         }
@@ -157,8 +155,7 @@ public static class Program {
                     FileSystem.DeleteDirectory(config.TomlConfig.Global.TempProjectPath, true);
                     Logger.Verbose("Cleaned up existing temp project: {TempProjectPath}",
                         config.TomlConfig.Global.TempProjectPath);
-                }
-                catch (Exception ex) {
+                } catch (Exception ex) {
                     Logger.Warning("Could not clean up existing temp project: {Message}", ex.Message);
                 }
             }
@@ -273,12 +270,10 @@ public static class Program {
                     totalSuccess);
                 return 0;
             }
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
             Logger.Error("Error: {Message}", ex.Message);
             return 1;
-        }
-        finally {
+        } finally {
             // Clean up Unity Hub if we started it and not in CI mode
             if (!config.CiMode && !wasHubRunning && IsUnityHubRunning()) {
                 Logger.Debug("Stopping Unity Hub...");
@@ -293,8 +288,7 @@ public static class Program {
                         FileSystem.DeleteDirectory(config.TomlConfig.Global.TempProjectPath, true);
                         Logger.Information("Cleaned up temporary project: {TempProjectPath}",
                             config.TomlConfig.Global.TempProjectPath);
-                    }
-                    catch (Exception ex) {
+                    } catch (Exception ex) {
                         Logger.Warning("Could not clean up temporary project: {Message}", ex.Message);
                     }
                 }
@@ -454,8 +448,7 @@ public static class Program {
 
             try {
                 FileSystem.CreateHardLink(targetFilePath, filePath);
-            }
-            catch (Exception ex) {
+            } catch (Exception ex) {
                 throw new InvalidOperationException(
                     $"Failed to create hard link for {filePath}. {ex.Message}", ex);
             }
@@ -501,8 +494,7 @@ public static class Program {
         try {
             var processes = Process.GetProcessesByName("Unity Hub");
             return processes.Length > 0;
-        }
-        catch {
+        } catch {
             return false;
         }
     }
@@ -537,8 +529,7 @@ public static class Program {
             // Give Unity Hub a moment to start up
             Thread.Sleep(2000);
             return IsUnityHubRunning();
-        }
-        catch {
+        } catch {
             return false;
         }
     }
@@ -550,13 +541,11 @@ public static class Program {
                 try {
                     process.Kill();
                     process.WaitForExit(5000); // Wait up to 5 seconds
-                }
-                catch {
+                } catch {
                     // Ignore errors when killing processes
                 }
             }
-        }
-        catch {
+        } catch {
             // Ignore errors
         }
     }

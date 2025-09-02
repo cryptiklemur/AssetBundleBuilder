@@ -79,8 +79,7 @@ public static class UnityPathFinder {
 
             Program.Logger.Information("Unity Editor {Version} installed successfully", version);
             return 0;
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
             Program.Logger.Error("Error during Unity installation: {Message}", ex.Message);
             return 1;
         }
@@ -262,19 +261,16 @@ public static class UnityPathFinder {
             }
 
             return 0;
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
             Program.Logger.Error("Error installing Unity Hub: {Message}", ex.Message);
             return 1;
-        }
-        finally {
+        } finally {
             // Clean up temp file
             try {
                 if (File.Exists(tempFile)) {
                     File.Delete(tempFile);
                 }
-            }
-            catch {
+            } catch {
                 // Ignore cleanup errors
             }
         }
@@ -314,18 +310,15 @@ public static class UnityPathFinder {
             Program.RunCommand("hdiutil", "detach \"/Volumes/Unity Hub\"");
 
             return 0;
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
             Program.Logger.Error("Error installing Unity Hub: {Message}", ex.Message);
             return 1;
-        }
-        finally {
+        } finally {
             try {
                 if (File.Exists(tempFile)) {
                     File.Delete(tempFile);
                 }
-            }
-            catch {
+            } catch {
                 // Ignore cleanup errors
             }
         }
@@ -369,8 +362,7 @@ public static class UnityPathFinder {
 
             Program.Logger.Debug("No changeset found in API response");
             return null;
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
             Program.Logger.Warning("Error querying Unity changeset via REST API: {Message}", ex.Message);
             return null;
         }
@@ -450,8 +442,7 @@ public static class UnityPathFinder {
 
             Program.Logger.Information("Unity Editor {Version} installed successfully", version);
             return 0;
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
             Program.Logger.Error("Error installing Unity Editor: {Message}", ex.Message);
             if (config.NonInteractive) {
                 Program.Logger.Error("Non-interactive mode: Exiting due to error");

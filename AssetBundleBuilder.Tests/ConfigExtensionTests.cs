@@ -1,7 +1,4 @@
 using System.CommandLine;
-using System.CommandLine.Parsing;
-using CryptikLemur.AssetBundleBuilder.Config;
-using Tomlet;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -25,8 +22,7 @@ public class ConfigExtensionTests : IDisposable {
                 if (File.Exists(file)) {
                     File.Delete(file);
                 }
-            }
-            catch (Exception ex) {
+            } catch (Exception ex) {
                 _output.WriteLine($"Warning: Could not delete temp file {file}: {ex.Message}");
             }
         }
@@ -35,8 +31,7 @@ public class ConfigExtensionTests : IDisposable {
             if (Directory.Exists(_testConfigDir)) {
                 Directory.Delete(_testConfigDir, true);
             }
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
             _output.WriteLine($"Warning: Could not delete temp directory {_testConfigDir}: {ex.Message}");
         }
     }

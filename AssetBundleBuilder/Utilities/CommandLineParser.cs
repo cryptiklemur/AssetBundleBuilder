@@ -105,8 +105,7 @@ public static class CommandLineParser {
             Configuration config;
             try {
                 config = new Configuration(result);
-            }
-            catch (Exception ex) {
+            } catch (Exception ex) {
                 Console.WriteLine($"Error loading configuration: {ex.Message}");
                 context.ExitCode = 1;
                 return;
@@ -181,8 +180,7 @@ public static class CommandLineParser {
 
                 Console.WriteLine();
             }
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
             Console.WriteLine($"Error reading config file: {ex.Message}");
         }
     }
@@ -196,8 +194,7 @@ public static class CommandLineParser {
             };
 
             Console.WriteLine(output);
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
             Console.WriteLine($"Error dumping config in {format} format: {ex.Message}");
         }
     }

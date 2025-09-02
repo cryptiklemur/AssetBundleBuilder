@@ -8,11 +8,12 @@ public interface IFileSystemOperations {
     void CreateSymbolicLink(string linkPath, string targetPath);
     void CreateHardLink(string linkPath, string targetPath);
     void CreateJunction(string junctionPath, string targetPath);
-    void DeleteFile(string path);
     void DeleteDirectory(string path, bool recursive = false);
     void WriteAllText(string path, string contents);
-    string[] GetFiles(string path, string searchPattern = "*", SearchOption searchOption = SearchOption.TopDirectoryOnly);
-    string[] GetDirectories(string path, string searchPattern = "*", SearchOption searchOption = SearchOption.TopDirectoryOnly);
-    FileInfo GetFileInfo(string path);
-    DirectoryInfo GetDirectoryInfo(string path);
+
+    string[] GetFiles(string path, string searchPattern = "*",
+        SearchOption searchOption = SearchOption.TopDirectoryOnly);
+
+    string[] GetDirectories(string path, string searchPattern = "*",
+        SearchOption searchOption = SearchOption.TopDirectoryOnly);
 }
