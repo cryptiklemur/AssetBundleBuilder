@@ -25,7 +25,7 @@ public class SystemFileOperations : IFileSystemOperations {
     }
 
     public void CreateHardLink(string linkPath, string targetPath) {
-        var process = new Process();
+        using Process process = new Process();
 
         if (OperatingSystem.IsWindows()) {
             // mklink is a built-in Windows command, must be run through cmd.exe
@@ -63,7 +63,7 @@ public class SystemFileOperations : IFileSystemOperations {
             throw new PlatformNotSupportedException("Junctions are only supported on Windows");
         }
 
-        var process = new Process {
+        using Process process = new Process {
             StartInfo = new ProcessStartInfo {
                 FileName = "cmd.exe",
                 Arguments = $"/C mklink /J \"{junctionPath}\" \"{targetPath}\"",
