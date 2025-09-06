@@ -192,6 +192,10 @@ Run `assetbundlebuilder --help` for full options list.
 - Check `build_targets` array in your config doesn't exclude your target
 - Use `--target` CLI flag to specify build target
 
+## Project Stats
+
+![Alt](https://repobeats.axiom.co/api/embed/ad5eba76d556c32a8bab80dd45a21a33d10a1842.svg "Repobeats analytics image")
+
 ## Support
 
 - Issues: [GitHub Issues](https://github.com/CryptikLemur/AssetBundleBuilder/issues)
