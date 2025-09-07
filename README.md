@@ -68,16 +68,17 @@ The TOML configuration file allows you to define multiple asset bundles with dif
 
 ```toml
 [global]
-unity_version = "2022.3.35f1"         # Unity version to use
-unity_path = "/path/to/Unity.exe"     # Or specify exact path
-output_directory = "AssetBundles"     # Default output directory
-build_targets = ["windows", "linux"]  # Restrict allowed targets
-temp_project_path = "/tmp/unity"      # Custom temp directory
-clean_temp_project = false            # Clean temp project after building. Disabled by default for caching
-link_method = "copy"                  # How to link assets: copy/symlink/hardlink/junction
-exclude_patterns = ["*.meta", "*.tmp"] # Files to exclude
-include_patterns = ["*.png", "*.wav"]  # Files to include
-targetless = true                      # Default for bundles: no platform suffix
+unity_version = "2022.3.35f1"                                     # Unity version to use
+unity_hub_path = "/path/to/Unity/UnityHub.exe"                    # Or specify exact path
+unity_editor_path = "/path/to/Unity/Editor/2022.3.35f1/Unity.exe" # Or specify exact path
+output_directory = "AssetBundles"                                 # Default output directory
+allowed_targets = ["windows", "linux"]                            # Restrict allowed targets
+temp_project_path = "/tmp/unity"                                  # Custom temp directory
+clean_temp_project = false                                        # Clean temp project after building. Disabled by default for caching
+link_method = "copy"                                              # How to link assets: copy/symlink/hardlink/junction
+exclude_patterns = ["*.meta", "*.tmp"]                            # Files to exclude
+include_patterns = ["*.png", "*.wav"]                             # Files to include
+targetless = true                                                 # Default for bundles: no platform suffix
 ```
 
 ### Bundle Configuration
@@ -88,7 +89,7 @@ description = "My custom asset bundle"
 asset_directory = "Assets/MyBundle"
 bundle_name = "author.mybundle"
 output_directory = "1.6/AssetBundles"        # Override global output
-build_targets = ["windows"]                  # Only allow specific targets
+allowed_targets = ["windows"]                # Only allow specific targets
 filename = "resource_[bundle_name]_[target]" # Custom filename format
 targetless = false                           # Platform-specific bundle (default: true)
 
