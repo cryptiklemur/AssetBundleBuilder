@@ -97,7 +97,6 @@ public class AssetLabeler
             
             // Normalize the path format.
             var extension = Path.GetExtension(assetPath).ToLower();
-            if (extension == "") extension = ".shader";
 
             // Process only common texture and audio file types .
             if (extension != ".png" && extension != ".jpeg" && extension != ".jpg" && extension != ".psd" &&

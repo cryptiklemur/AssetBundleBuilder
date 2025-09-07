@@ -247,21 +247,23 @@ public class Configuration {
     private TomlGlobalConfig MergeGlobalConfig(TomlGlobalConfig parent, TomlGlobalConfig child) {
         var merged = new TomlGlobalConfig {
             // Don't inherit extends - it's already been processed
-            Extends = null,
+            Extends = string.Empty,
             UnityVersion = !string.IsNullOrEmpty(child.UnityVersion) ? child.UnityVersion : parent.UnityVersion,
             UnityEditorPath = !string.IsNullOrEmpty(child.UnityEditorPath)
                 ? child.UnityEditorPath
                 : parent.UnityEditorPath,
             UnityHubPath = !string.IsNullOrEmpty(child.UnityHubPath) ? child.UnityHubPath : parent.UnityHubPath,
             AllowedTargets = child.AllowedTargets?.Count > 0 ? child.AllowedTargets : parent.AllowedTargets,
-            TempProjectPath = child.TempProjectPath ?? parent.TempProjectPath,
+            TempProjectPath = !string.IsNullOrEmpty(child.TempProjectPath) ? child.TempProjectPath : parent.TempProjectPath,
             CleanTempProject = child.CleanTempProject || parent.CleanTempProject,
             LinkMethod = child.LinkMethod != "copy" ? child.LinkMethod : parent.LinkMethod,
-            LogFile = child.LogFile ?? parent.LogFile,
-            ExcludePatterns = child.ExcludePatterns ?? parent.ExcludePatterns,
-            IncludePatterns = child.IncludePatterns ?? parent.IncludePatterns,
-            Filename = child.Filename ?? parent.Filename,
-            Targetless = child.Targetless && parent.Targetless
+            LogFile = !string.IsNullOrEmpty(child.LogFile) ? child.LogFile : parent.LogFile,
+            ExcludePatterns = child.ExcludePatterns.Count > 0 ? child.ExcludePatterns : parent.ExcludePatterns,
+            IncludePatterns = child.IncludePatterns.Count > 0 ? child.IncludePatterns : parent.IncludePatterns,
+            Filename = !string.IsNullOrEmpty(child.Filename) ? child.Filename : parent.Filename,
+            Targetless = child.Targetless && parent.Targetless,
+            AssetDirectory = !string.IsNullOrEmpty(child.AssetDirectory) ? child.AssetDirectory : parent.AssetDirectory,
+            OutputDirectory = !string.IsNullOrEmpty(child.OutputDirectory) ? child.OutputDirectory : parent.OutputDirectory
         };
 
         return merged;

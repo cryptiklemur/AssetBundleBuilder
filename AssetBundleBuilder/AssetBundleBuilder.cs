@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using CryptikLemur.AssetBundleBuilder.Config;
 using CryptikLemur.AssetBundleBuilder.Interfaces;
 using CryptikLemur.AssetBundleBuilder.Utilities;
 using Serilog;
@@ -93,15 +94,13 @@ public static class Program {
                 bundlePath = string.IsNullOrEmpty(bundleConfig.BundlePath)
                     ? bundleConfig.BundleName
                     : bundleConfig.BundlePath,
-                assetDirectory = bundleConfig.AssetDirectory,
-                outputDirectory = Path.IsPathRooted(bundleConfig.OutputDirectory)
-                    ? bundleConfig.OutputDirectory
-                    : Path.GetFullPath(bundleConfig.OutputDirectory),
+                assetDirectory = GetEffectiveAssetDirectory(bundleConfig, config.TomlConfig.Global),
+                outputDirectory = GetEffectiveOutputDirectory(bundleConfig, config.TomlConfig.Global),
                 buildTargets = null, // null for targetless bundles
                 noPlatformSuffix = true,
-                filenameFormat = bundleConfig.Filename ?? "",
-                includePatterns = bundleConfig.IncludePatterns ?? [],
-                excludePatterns = bundleConfig.ExcludePatterns ?? []
+                filenameFormat = bundleConfig.Filename,
+                includePatterns = bundleConfig.IncludePatterns,
+                excludePatterns = bundleConfig.ExcludePatterns
             };
 
             // For targetless bundles, buildTargets should be null
@@ -336,8 +335,8 @@ public static class Program {
                 throw new DirectoryNotFoundException($"Asset directory not found: {bundle.assetDirectory}");
             }
 
-            // Normalize the source directory path to avoid duplicates
-            string normalizedSource = Path.GetFullPath(bundle.assetDirectory);
+            // Use the already-normalized source directory path to avoid duplicates
+            string normalizedSource = bundle.assetDirectory;
 
             if (linkedSources.Contains(normalizedSource)) {
                 Logger.Debug(
@@ -550,6 +549,33 @@ public static class Program {
         }
     }
 
+    private static string GetEffectiveAssetDirectory(TomlBundleConfig bundleConfig, TomlGlobalConfig globalConfig) {
+        string assetDirectory = string.IsNullOrEmpty(bundleConfig.AssetDirectory)
+            ? globalConfig.AssetDirectory
+            : bundleConfig.AssetDirectory;
+
+        if (string.IsNullOrEmpty(assetDirectory)) {
+            throw new ArgumentException("Asset directory is required in either bundle config or global config");
+        }
+
+        return Path.IsPathRooted(assetDirectory)
+            ? assetDirectory
+            : Path.GetFullPath(assetDirectory);
+    }
+
+    private static string GetEffectiveOutputDirectory(TomlBundleConfig bundleConfig, TomlGlobalConfig globalConfig) {
+        string outputDirectory = string.IsNullOrEmpty(bundleConfig.OutputDirectory)
+            ? globalConfig.OutputDirectory
+            : bundleConfig.OutputDirectory;
+
+        if (string.IsNullOrEmpty(outputDirectory)) {
+            outputDirectory = Directory.GetCurrentDirectory();
+        }
+
+        return Path.IsPathRooted(outputDirectory)
+            ? outputDirectory
+            : Path.GetFullPath(outputDirectory);
+    }
 
     /// <summary>
     ///     Bundle configuration for Unity multi-bundle building
