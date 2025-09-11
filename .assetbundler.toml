@@ -5,6 +5,19 @@
 unity_version = "2022.3.35f1"
 exclude_patterns = ["*.tmp", "backup/*", "*.meta"]
 
+# Global texture type configurations
+[global.texture_types.normalmap]
+patterns = ["**/*_normal.*", "**/*_Normal.*", "**/*_norm.*"]
+
+[global.texture_types.gui]
+patterns = ["**/ui/**/*", "**/GUI/**/*"]
+
+[global.texture_types.default]
+patterns = ["**/terrain/**/*"]
+
+[global.texture_types.mask]
+patterns = ["**/*_mask.*", "**/*_Mask.*", "**/masks/**/*"]
+
 [bundles.textures]
 description = "All texture assets for the mod"
 asset_directory = "TestAssets/"
@@ -12,6 +25,13 @@ bundle_name = "author.textures"
 include_patterns = ["*.png", "*.jpg", "*.jpeg"]
 exclude_patterns = ["*.backup"]
 targetless = true
+
+# Bundle-specific texture types (overrides global)
+[bundles.textures.texture_types.sprite]
+patterns = ["**/sprites/**/*", "**/*_icon.*"]
+
+[bundles.textures.texture_types.mask]
+patterns = ["**/*_metallic.*", "**/*_roughness.*", "**/*_ao.*"]
 
 [bundles.sounds]
 description = "Audio assets including music and effects"

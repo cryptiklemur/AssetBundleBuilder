@@ -11,6 +11,81 @@ public class AssetLabeler
     private static readonly string assetsFolder = Path.Combine("Assets", "Data");
 
     /// <summary>
+    /// Custom texture type enum that matches Unity's TextureImporterType values plus custom Mask type
+    /// </summary>
+    public enum CustomTextureImporterType
+    {
+        Default,
+        NormalMap,
+        Gui,
+        Sprite,
+        Cursor,
+        Cookie,
+        Lightmap,
+        SingleChannel,
+        Shadowmask,
+        DirectionalLightmap,
+        Mask, // Custom type for mask textures
+        Terrain // Custom type for terrain textures
+        
+        static TextureImporterType ToTextureImporterType() {
+                return typeName switch {
+                    NormalMap => CustomTextureImporterType.NormalMap,
+                    Gui => CustomTextureImporterType.Gui,
+                    Sprite => CustomTextureImporterType.Sprite,
+                    Cursor => CustomTextureImporterType.Cursor,
+                    Cookie => CustomTextureImporterType.Cookie,
+                    Lightmap => CustomTextureImporterType.Lightmap,
+                    SingleChannel => CustomTextureImporterType.SingleChannel,
+                    Shadowmask => CustomTextureImporterType.Shadowmask,
+                    DirectionalLightmap => CustomTextureImporterType.DirectionalLightmap,
+                    Default, Mask, Terrain, _ => CustomTextureImporterType.Default,
+            };
+        }
+    }
+
+    /// <summary>
+    /// Utility class for texture type conversions
+    /// </summary>
+    public static class CustomTextureImporterTypeHelper
+    {
+        /// <summary>
+        /// Convert string to CustomTextureImporterType enum
+        /// </summary>
+        public static CustomTextureImporterType? FromString(string typeName)
+        {
+            return typeName.ToLower() switch
+            {
+                "default" => CustomTextureImporterType.Default,
+                "normalmap" or "normal" => CustomTextureImporterType.NormalMap,
+                "gui" => CustomTextureImporterType.Gui,
+                "sprite" => CustomTextureImporterType.Sprite,
+                "cursor" => CustomTextureImporterType.Cursor,
+                "cookie" => CustomTextureImporterType.Cookie,
+                "lightmap" => CustomTextureImporterType.Lightmap,
+                "singlechannel" => CustomTextureImporterType.SingleChannel,
+                "shadowmask" => CustomTextureImporterType.Shadowmask,
+                "directionallightmap" => CustomTextureImporterType.DirectionalLightmap,
+                "mask" => CustomTextureImporterType.Mask,
+                "terrain" => CustomTextureImporterType.Terrain,
+                _ => null
+            };
+        }
+    }
+
+    // Texture type configuration for importer settings
+    [Serializable]
+    public class TextureTypeConfig
+    {
+        public List<string> patterns;
+
+        public TextureTypeConfig()
+        {
+            patterns = new List<string>();
+        }
+    }
+
+    /// <summary>
     ///     Converts a texture asset from Sprite to Default to prevent Unity from generating sprite sub-assets.
     /// </summary>
     /// <param name="assetPath">The path to the texture asset.</param>
@@ -48,9 +123,11 @@ public class AssetLabeler
     /// <param name="bundlePath">The name following Assets/Data in the assetbundle</param>
     /// <param name="includePatterns">Patterns to include (if empty, includes all)</param>
     /// <param name="excludePatterns">Patterns to exclude</param>
+    /// <param name="textureTypes">Dictionary of texture type configurations</param>
     /// <returns>The asset bundle build info.</returns>
     public static AssetBundleBuild LabelAllAssetsWithCommonName(string bundleName, string bundlePath, 
-        List<string> includePatterns = null, List<string> excludePatterns = null)
+        List<string> includePatterns = null, List<string> excludePatterns = null,
+        Dictionary<string, TextureTypeConfig> textureTypes = null)
     {
         var sourceDirectory = Path.Combine(assetsFolder, bundlePath);
         Debug.Log($"Finding all assets in {sourceDirectory}");
@@ -130,7 +207,20 @@ public class AssetLabeler
             {
                 bool isTerrain = assetPath.ToLower().Contains("/terrain/");
 
-                textureImporter.textureType = TextureImporterType.GUI;
+                // Determine texture type based on configured patterns
+                var determinedType = DetermineTextureType(relativePath, textureTypes);
+                
+                // Apply texture type (with fallback logic)
+                if (determinedType != null)
+                {
+                    // Use the ToTextureImporterType method to convert to Unity's type
+                    textureImporter.textureType = (UnityEditor.TextureImporterType)determinedType.Value.ToTextureImporterType();
+                }
+                else
+                {
+                    textureImporter.textureType = UnityEditor.TextureImporterType.Default;
+                }
+
                 textureImporter.alphaIsTransparency = true;
                 textureImporter.alphaSource = TextureImporterAlphaSource.FromInput;
 
@@ -139,10 +229,13 @@ public class AssetLabeler
                 textureImporter.anisoLevel = isTerrain ? 8 : 1;
 
                 textureImporter.filterMode = FilterMode.Trilinear;
+                
+                if ()
                 textureImporter.mipmapEnabled = true;
                 textureImporter.mipmapFilter = TextureImporterMipFilter.KaiserFilter;
-                textureImporter.sRGBTexture = !assetPath.ToLower().Contains("_mask") && !assetPath.ToLower().Contains("_normal");
-                if (assetPath.ToLower().Contains("_normal")) textureImporter.textureType = TextureImporterType.NormalMap;
+                // Set sRGB based on texture type - masks and normal maps should not use sRGB
+                bool isMaskType = determinedType == CustomTextureImporterType.Mask;
+                textureImporter.sRGBTexture = !isMaskType && !assetPath.ToLower().Contains("_mask") && !assetPath.ToLower().Contains("_normal");
 
                 textureImporter.SetPlatformTextureSettings(new TextureImporterPlatformSettings
                 {
@@ -208,6 +301,34 @@ public class AssetLabeler
         }
 
         return false;
+    }
+
+    private static CustomTextureImporterType? DetermineTextureType(string relativePath, Dictionary<string, TextureTypeConfig> textureTypes) {
+        if (textureTypes == null || textureTypes.Count == 0)
+            return null;
+
+        // Normalize path separators for consistent matching
+        var normalizedPath = relativePath.Replace('\\', '/');
+
+        // Check each texture type configuration
+        foreach (var kvp in textureTypes) {
+            var typeName = kvp.Key.ToLower();
+            var config = kvp.Value;
+
+            if (config.patterns == null || config.patterns.Count == 0)
+                continue;
+
+            // Check if the file matches any pattern for this type
+            foreach (var pattern in config.patterns) {
+                var regexPattern = GlobToRegex(pattern);
+                if (Regex.IsMatch(normalizedPath, regexPattern, RegexOptions.IgnoreCase)) {
+                    // Use the helper method to convert string to enum
+                    return CustomTextureImporterTypeHelper.FromString(typeName);
+                }
+            }
+        }
+
+        return null;
     }
 
     private static string GlobToRegex(string glob) {

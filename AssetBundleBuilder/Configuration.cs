@@ -184,6 +184,13 @@ public class Configuration {
 
         string tomlContent = File.ReadAllText(configPath);
         var currentConfig = TomletMain.To<TomlConfiguration>(tomlContent);
+        
+        // Apply global defaults to all bundles in current config
+        var mergedBundles = new Dictionary<string, TomlBundleConfig>();
+        foreach (var bundle in currentConfig.Bundles) {
+            mergedBundles[bundle.Key] = MergeBundleWithGlobal(currentConfig.Global, bundle.Value);
+        }
+        currentConfig.Bundles = mergedBundles;
 
         // Check if this config extends another
         if (!string.IsNullOrEmpty(currentConfig.Global.Extends)) {
@@ -235,10 +242,37 @@ public class Configuration {
 
         // Override or add bundles from child
         foreach (var bundle in child.Bundles) {
-            merged.Bundles[bundle.Key] = bundle.Value;
+            // Merge bundle config with global defaults
+            merged.Bundles[bundle.Key] = MergeBundleWithGlobal(merged.Global, bundle.Value);
         }
 
         return merged;
+    }
+
+    /// <summary>
+    ///     Merge bundle configuration with global defaults
+    /// </summary>
+    private TomlBundleConfig MergeBundleWithGlobal(TomlGlobalConfig global, TomlBundleConfig bundle) {
+        return new TomlBundleConfig {
+            // Bundle-specific properties
+            BundleName = bundle.BundleName,
+            BundlePath = bundle.BundlePath,
+            Description = bundle.Description,
+            
+            // Shared properties - use bundle value if set, otherwise use global
+            Extends = bundle.Extends, // Don't inherit from global
+            AllowedTargets = bundle.AllowedTargets?.Count > 0 ? bundle.AllowedTargets : global.AllowedTargets,
+            TempProjectPath = !string.IsNullOrEmpty(bundle.TempProjectPath) ? bundle.TempProjectPath : global.TempProjectPath,
+            CleanTempProject = bundle.CleanTempProject || global.CleanTempProject,
+            LogFile = !string.IsNullOrEmpty(bundle.LogFile) ? bundle.LogFile : global.LogFile,
+            ExcludePatterns = bundle.ExcludePatterns.Count > 0 ? bundle.ExcludePatterns : global.ExcludePatterns,
+            IncludePatterns = bundle.IncludePatterns.Count > 0 ? bundle.IncludePatterns : global.IncludePatterns,
+            Filename = !string.IsNullOrEmpty(bundle.Filename) ? bundle.Filename : global.Filename,
+            Targetless = bundle.Targetless, // Don't inherit - bundle decides its own targetless setting
+            AssetDirectory = !string.IsNullOrEmpty(bundle.AssetDirectory) ? bundle.AssetDirectory : global.AssetDirectory,
+            OutputDirectory = !string.IsNullOrEmpty(bundle.OutputDirectory) ? bundle.OutputDirectory : global.OutputDirectory,
+            TextureTypes = bundle.TextureTypes?.Count > 0 ? bundle.TextureTypes : global.TextureTypes
+        };
     }
 
     /// <summary>
@@ -263,7 +297,8 @@ public class Configuration {
             Filename = !string.IsNullOrEmpty(child.Filename) ? child.Filename : parent.Filename,
             Targetless = child.Targetless && parent.Targetless,
             AssetDirectory = !string.IsNullOrEmpty(child.AssetDirectory) ? child.AssetDirectory : parent.AssetDirectory,
-            OutputDirectory = !string.IsNullOrEmpty(child.OutputDirectory) ? child.OutputDirectory : parent.OutputDirectory
+            OutputDirectory = !string.IsNullOrEmpty(child.OutputDirectory) ? child.OutputDirectory : parent.OutputDirectory,
+            TextureTypes = child.TextureTypes?.Count > 0 ? child.TextureTypes : parent.TextureTypes
         };
 
         return merged;

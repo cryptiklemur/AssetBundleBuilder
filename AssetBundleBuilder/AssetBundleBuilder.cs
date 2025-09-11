@@ -100,7 +100,8 @@ public static class Program {
                 noPlatformSuffix = true,
                 filenameFormat = bundleConfig.Filename,
                 includePatterns = bundleConfig.IncludePatterns,
-                excludePatterns = bundleConfig.ExcludePatterns
+                excludePatterns = bundleConfig.ExcludePatterns,
+                textureTypes = ConvertTextureTypes(bundleConfig.TextureTypes ?? config.TomlConfig.Global.TextureTypes)
             };
 
             // For targetless bundles, buildTargets should be null
@@ -577,6 +578,14 @@ public static class Program {
             : Path.GetFullPath(outputDirectory);
     }
 
+    private static Dictionary<string, UnityTextureTypeConfig> ConvertTextureTypes(Dictionary<string, Config.TextureTypeConfig> tomlTypes) {
+        var result = new Dictionary<string, UnityTextureTypeConfig>();
+        foreach (var kvp in tomlTypes) {
+            result[kvp.Key] = new UnityTextureTypeConfig { patterns = kvp.Value.Patterns };
+        }
+        return result;
+    }
+
     /// <summary>
     ///     Bundle configuration for Unity multi-bundle building
     /// </summary>
@@ -590,10 +599,15 @@ public static class Program {
         public string filenameFormat { get; set; } = "";
         public List<string> includePatterns { get; set; } = [];
         public List<string> excludePatterns { get; set; } = [];
+        public Dictionary<string, UnityTextureTypeConfig> textureTypes { get; set; } = [];
 
         public string GetBundlePathOrName() {
             return string.IsNullOrEmpty(bundlePath) ? bundleName : bundlePath;
         }
+    }
+
+    public class UnityTextureTypeConfig {
+        public List<string> patterns { get; set; } = [];
     }
 
     /// <summary>

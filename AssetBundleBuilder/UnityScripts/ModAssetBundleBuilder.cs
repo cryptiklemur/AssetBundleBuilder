@@ -28,6 +28,7 @@ public class ModAssetBundleBuilder
         public string filenameFormat;
         public List<string> includePatterns;
         public List<string> excludePatterns;
+        public Dictionary<string, TextureTypeConfig> textureTypes;
 
         public string GetBundlePathOrName() {
             return string.IsNullOrEmpty(bundlePath) ? bundleName : bundlePath;
@@ -37,6 +38,18 @@ public class ModAssetBundleBuilder
         {
             includePatterns = new List<string>();
             excludePatterns = new List<string>();
+            textureTypes = new Dictionary<string, TextureTypeConfig>();
+        }
+    }
+
+    [Serializable]
+    public class TextureTypeConfig
+    {
+        public List<string> patterns;
+
+        public TextureTypeConfig()
+        {
+            patterns = new List<string>();
         }
     }
     
@@ -149,7 +162,7 @@ public class ModAssetBundleBuilder
 
         // Ensure textures are labeled correctly before proceeding.
         var bundle = AssetLabeler.LabelAllAssetsWithCommonName(assetBundleName, config.bundlePath,
-            config.includePatterns, config.excludePatterns);
+            config.includePatterns, config.excludePatterns, config.textureTypes);
         if (bundle.assetNames == null || bundle.assetNames.Count() == 0) {
             throw new Exception("No assets were labeled; aborting asset bundle build.");
         }
