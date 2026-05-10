@@ -5,6 +5,9 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
+#if TMP_PRESENT
+using TMPro;
+#endif
 
 public class AssetLabeler
 {
@@ -39,6 +42,93 @@ public class AssetLabeler
             importer.textureType = TextureImporterType.Default;
             importer.SaveAndReimport();
         }
+    }
+
+
+    /// <summary>
+    ///     Resolves the conventional TextMeshPro font asset path that sits alongside a TTF/OTF file.
+    /// </summary>
+    private static string GetTMPFontAssetPath(string fontAssetPath)
+    {
+        var directory = Path.GetDirectoryName(fontAssetPath) ?? string.Empty;
+        var fileName = Path.GetFileNameWithoutExtension(fontAssetPath);
+        return Path.Combine(directory, fileName + " SDF.asset").Replace('\\', '/');
+    }
+
+    /// <summary>
+    ///     If a TMP font asset already exists for the given font, label it with the bundle name and add it to the list.
+    /// </summary>
+    private static string AddExistingTMPFontAsset(string fontAssetPath, string bundleName, List<string> files)
+    {
+        var tmpAssetPath = GetTMPFontAssetPath(fontAssetPath);
+        if (!File.Exists(tmpAssetPath)) return null;
+
+        var importer = AssetImporter.GetAtPath(tmpAssetPath);
+        if (importer == null) return null;
+
+        importer.assetBundleName = bundleName;
+        importer.SaveAndReimport();
+        files.Add(tmpAssetPath);
+        return tmpAssetPath;
+    }
+
+    /// <summary>
+    ///     Generates a TextMeshPro font asset (dynamic atlas) next to the supplied TTF/OTF file and labels it with the bundle.
+    /// </summary>
+    private static string GenerateTMPFontAsset(string fontAssetPath, string bundleName)
+    {
+#if TMP_PRESENT
+        try
+        {
+            var tmpAssetPath = GetTMPFontAssetPath(fontAssetPath);
+
+            if (File.Exists(tmpAssetPath))
+            {
+                var existingImporter = AssetImporter.GetAtPath(tmpAssetPath);
+                if (existingImporter != null)
+                {
+                    existingImporter.assetBundleName = bundleName;
+                    existingImporter.SaveAndReimport();
+                }
+                return tmpAssetPath;
+            }
+
+            var font = AssetDatabase.LoadAssetAtPath<Font>(fontAssetPath);
+            if (font == null)
+            {
+                Debug.LogError($"Could not load Font at path: {fontAssetPath}");
+                return null;
+            }
+
+            var tmpFontAsset = TMP_FontAsset.CreateFontAsset(font);
+            if (tmpFontAsset == null)
+            {
+                Debug.LogError($"Failed to create TMP_FontAsset for: {fontAssetPath}");
+                return null;
+            }
+
+            AssetDatabase.CreateAsset(tmpFontAsset, tmpAssetPath);
+            AssetDatabase.SaveAssets();
+
+            var tmpImporter = AssetImporter.GetAtPath(tmpAssetPath);
+            if (tmpImporter != null)
+            {
+                tmpImporter.assetBundleName = bundleName;
+                tmpImporter.SaveAndReimport();
+            }
+
+            Debug.Log($"Generated TMP_FontAsset for {fontAssetPath} at {tmpAssetPath}");
+            return tmpAssetPath;
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"Error generating TMP_FontAsset for {fontAssetPath}: {ex.Message}");
+            return null;
+        }
+#else
+        Debug.LogWarning($"TextMeshPro package not present; skipping TMP_FontAsset generation for {fontAssetPath}. Add com.unity.textmeshpro to Packages/manifest.json to enable.");
+        return null;
+#endif
     }
 
     /// <summary>
@@ -86,21 +176,13 @@ public class AssetLabeler
             
             var assetPath = Path.Combine("Assets", "Data", bundlePath, relativePath).Replace('\\', '/');
            
-            // Skip if meta file already exists
-            var metaPath = assetPath + ".meta";
-            if (File.Exists(metaPath))
-            {
-                assetsLabeled++;
-                files.Add(assetPath);
-                continue; // Already imported/configured — leave it alone
-            }
-            
             // Normalize the path format.
             var extension = Path.GetExtension(assetPath).ToLower();
 
-            // Process only common texture and audio file types .
+            // Process only common texture, audio, shader, and font file types.
             if (extension != ".png" && extension != ".jpeg" && extension != ".jpg" && extension != ".psd" &&
-                extension != ".wav" && extension != ".mp3" && extension != ".ogg" && extension != ".shader")
+                extension != ".wav" && extension != ".mp3" && extension != ".ogg" && extension != ".shader" &&
+                extension != ".ttf" && extension != ".otf")
             {
                 // Console.WriteLine("[Warning] Skipped asset, wrong format: " + filePath);
                 continue;
@@ -109,9 +191,27 @@ public class AssetLabeler
             var isTexture = extension is ".png" or ".jpeg" or ".jpg" or ".psd";
             var isPSD = extension is ".psd";
             var isAudio = extension is ".wav" or ".mp3" or ".ogg";
+            var isFont = extension is ".ttf" or ".otf";
 
             // Confirm that the asset is located under the Assets folder.
             if (!assetPath.StartsWith("Assets")) continue;
+
+            // Skip if meta file already exists
+            var metaPath = assetPath + ".meta";
+            if (File.Exists(metaPath))
+            {
+                assetsLabeled++;
+                files.Add(assetPath);
+
+                // For fonts, also pick up the previously-generated TMP asset if present
+                if (isFont)
+                {
+                    var existingTmpPath = AddExistingTMPFontAsset(assetPath, bundleName, files);
+                    if (!string.IsNullOrEmpty(existingTmpPath)) assetsLabeled++;
+                }
+
+                continue; // Already imported/configured — leave it alone
+            }
 
             // Convert Sprite textures to Default to avoid additional sprite sub-assets.
             if (isTexture) ConvertSpriteToDefault(assetPath);
@@ -164,6 +264,12 @@ public class AssetLabeler
                     preloadAudioData = true
                 };
             }
+            else if (isFont && importer is TrueTypeFontImporter fontImporter)
+            {
+                // Dynamic font mode lets Unity rasterize glyphs on-demand at runtime.
+                fontImporter.fontTextureCase = FontTextureCase.Dynamic;
+                fontImporter.includeFontData = true;
+            }
             else if (importer is ShaderImporter shaderImporter)
             {
                 // Don't need to do anything, I think
@@ -172,6 +278,17 @@ public class AssetLabeler
             importer.SaveAndReimport();
             assetsLabeled++;
             files.Add(assetPath);
+
+            // For fonts, also generate a TextMeshPro font asset alongside the raw font.
+            if (isFont)
+            {
+                var tmpAssetPath = GenerateTMPFontAsset(assetPath, bundleName);
+                if (!string.IsNullOrEmpty(tmpAssetPath))
+                {
+                    files.Add(tmpAssetPath);
+                    assetsLabeled++;
+                }
+            }
         }
 
         Debug.Log($"Labeling complete: {assetsLabeled} assets labeled with \"{bundleName}\".");

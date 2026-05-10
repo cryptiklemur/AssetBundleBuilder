@@ -213,6 +213,75 @@ public class AssetBundleCreationTests(ITestOutputHelper output) : AssetBundleTes
         _output.WriteLine("Different file types bundle creation verified through process mocking");
     }
 
+
+    [Fact]
+    public async Task CreateAssetBundle_WithFontFiles_ShouldIncludeAndCreatePackagesManifest() {
+        // Arrange
+        string testAssetsDir = CreateTestAssetsDirectory("FontBundle");
+
+        // Create stub font files - actual TTF/OTF byte validity is irrelevant here because
+        // Unity execution is mocked. We just need to drive the same code path.
+        File.WriteAllBytes(Path.Combine(testAssetsDir, "MyFont.ttf"), [0x00, 0x01, 0x00, 0x00]);
+        File.WriteAllBytes(Path.Combine(testAssetsDir, "MyOther.otf"), [0x4F, 0x54, 0x54, 0x4F]);
+
+        string bundleName = "fonts.bundle";
+        var config = CreateTestConfiguration(
+            bundleName,
+            testAssetsDir,
+            _testOutputPath
+        );
+
+        var manifestWrites = new List<(string Path, string Contents)>();
+
+        var mockFileSystem = new Mock<IFileSystemOperations>();
+        mockFileSystem.Setup(x => x.DirectoryExists(It.IsAny<string>())).Returns(true);
+        mockFileSystem.Setup(x => x.FileExists(It.IsAny<string>())).Returns((string path) =>
+            !path.EndsWith("manifest.json", StringComparison.OrdinalIgnoreCase));
+        mockFileSystem.Setup(x => x.CreateDirectory(It.IsAny<string>()));
+        mockFileSystem.Setup(x => x.CopyFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()));
+        mockFileSystem.Setup(x => x.WriteAllText(It.IsAny<string>(), It.IsAny<string>()))
+            .Callback<string, string>((path, contents) => manifestWrites.Add((path, contents)));
+        mockFileSystem.Setup(x => x.GetFiles(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
+            .Returns([
+                Path.Combine(testAssetsDir, "MyFont.ttf"),
+                Path.Combine(testAssetsDir, "MyOther.otf")
+            ]);
+        mockFileSystem.Setup(x => x.GetDirectories(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SearchOption>()))
+            .Returns([]);
+
+        var mockProcessRunner = new Mock<IProcessRunner>();
+        mockProcessRunner
+            .Setup(x => x.RunAsync(It.IsAny<ProcessStartInfo>()))
+            .ReturnsAsync(new ProcessResult {
+                ExitCode = 0,
+                StandardOutput = "Mock Unity font build completed",
+                StandardError = ""
+            });
+
+        Program.FileSystem = mockFileSystem.Object;
+        Program.ProcessRunner = mockProcessRunner.Object;
+
+        // Act
+        bool success = await BuildAssetBundleAsync(config);
+
+        // Assert
+        Assert.True(success, "Bundle creation should succeed with font files");
+
+        mockProcessRunner.Verify(x => x.RunAsync(It.Is<ProcessStartInfo>(psi =>
+            psi.Arguments.Contains("-batchmode") &&
+            psi.Arguments.Contains("-executeMethod") &&
+            psi.Arguments.Contains("ModAssetBundleBuilder.BuildBundles")
+        )), Times.AtLeastOnce);
+
+        var manifestWrite = manifestWrites.FirstOrDefault(w =>
+            w.Path.EndsWith("manifest.json", StringComparison.OrdinalIgnoreCase));
+        Assert.False(string.IsNullOrEmpty(manifestWrite.Path),
+            "Packages/manifest.json should have been written for font support");
+        Assert.Contains("com.unity.textmeshpro", manifestWrite.Contents);
+
+        _output.WriteLine("Font bundle creation verified, TMP package wired into manifest");
+    }
+
     [Fact]
     public async Task CreateAssetBundle_WithEmptyDirectory_ShouldHandleGracefully() {
         // Arrange

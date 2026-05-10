@@ -311,6 +311,10 @@ public static class Program {
         FileSystem.CreateDirectory(Path.Combine(projectPath, "Assets"));
         FileSystem.CreateDirectory(Path.Combine(projectPath, "Assets", "Editor"));
         FileSystem.CreateDirectory(Path.Combine(projectPath, "Assets", "Data"));
+        FileSystem.CreateDirectory(Path.Combine(projectPath, "Packages"));
+
+        // Ensure required Unity packages (e.g. TextMeshPro for font asset generation) are available.
+        CreatePackagesManifest(Path.Combine(projectPath, "Packages"));
 
         // Create the ModAssetBundleBuilder script
         CreateModAssetBundleBuilderScript(Path.Combine(projectPath, "Assets", "Editor"));
@@ -370,6 +374,26 @@ public static class Program {
         string sourceFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "UnityScripts", "AssetLabeler.cs");
         string targetFile = Path.Combine(editorPath, "AssetLabeler.cs");
         FileSystem.CopyFile(sourceFile, targetFile, true);
+    }
+
+
+    private static void CreatePackagesManifest(string packagesPath) {
+        string manifestPath = Path.Combine(packagesPath, "manifest.json");
+        if (FileSystem.FileExists(manifestPath)) {
+            // Respect existing manifest - the user (or Unity) has already populated it.
+            return;
+        }
+
+        const string manifestContent = """
+                                       {
+                                         "dependencies": {
+                                           "com.unity.textmeshpro": "3.0.6"
+                                         }
+                                       }
+                                       """;
+
+        FileSystem.WriteAllText(manifestPath, manifestContent);
+        Logger.Debug("Wrote Packages/manifest.json with TextMeshPro dependency at {ManifestPath}", manifestPath);
     }
 
     // Unity scripts are now copied from UnityScripts/ directory instead of being embedded
