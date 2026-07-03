@@ -54,6 +54,7 @@
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
         <Compile Remove="UnityScripts\PSDMatteUtility.cs"/>
+        <None Include="UnityScripts\AssetConfigurationDecision.cs" CopyToOutputDirectory="PreserveNewest"/>
         <Compile Remove="..\AssetBundleBuilder.Tests\**\*.cs"/>
     </ItemGroup>
 

@@ -196,9 +196,20 @@ public class AssetLabeler
             // Confirm that the asset is located under the Assets folder.
             if (!assetPath.StartsWith("Assets")) continue;
 
-            // Skip if meta file already exists
-            var metaPath = assetPath + ".meta";
-            if (File.Exists(metaPath))
+            // Fetch the importer up front so we can decide whether it still needs configuring.
+            var importer = AssetImporter.GetAtPath(assetPath);
+            if (importer == null)
+            {
+                Debug.LogError($"[Warning] Could not get importer for: {assetPath}");
+                continue;
+            }
+
+            // A bare .meta from Unity's initial import does NOT mean the asset is configured.
+            // Only skip re-import work when the importer already carries our bundle name and
+            // (for textures) our Standalone platform override — the state we leave it in.
+            bool hasStandaloneOverride = importer is TextureImporter existingTexture &&
+                                         existingTexture.GetPlatformTextureSettings("Standalone").overridden;
+            if (!AssetConfigurationDecision.ShouldConfigure(importer.assetBundleName, hasStandaloneOverride, bundleName))
             {
                 assetsLabeled++;
                 files.Add(assetPath);
@@ -210,20 +221,22 @@ public class AssetLabeler
                     if (!string.IsNullOrEmpty(existingTmpPath)) assetsLabeled++;
                 }
 
-                continue; // Already imported/configured — leave it alone
+                continue; // Already configured by a previous run — leave it alone
             }
 
             // Convert Sprite textures to Default to avoid additional sprite sub-assets.
             if (isTexture) ConvertSpriteToDefault(assetPath);
             if (isPSD) EnsurePSDSettingsForFile(assetPath);
 
-            // Set a common asset bundle name for every texture.
-            var importer = AssetImporter.GetAtPath(assetPath);
+            // Sprite/PSD conversion reimports the asset, so re-fetch a live importer handle.
+            importer = AssetImporter.GetAtPath(assetPath);
             if (importer == null)
             {
                 Debug.LogError($"[Warning] Could not get importer for: {assetPath}");
                 continue;
             }
+
+            // Set a common asset bundle name for every asset.
             importer.assetBundleName = bundleName;
 
             if (isTexture && importer is TextureImporter textureImporter)

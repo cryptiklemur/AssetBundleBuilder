@@ -322,6 +322,9 @@ public static class Program {
         // Create the AssetLabeler script
         CreateAssetLabelerScript(Path.Combine(projectPath, "Assets", "Editor"));
 
+        // Create the AssetConfigurationDecision helper the labeler depends on
+        CreateAssetConfigurationDecisionScript(Path.Combine(projectPath, "Assets", "Editor"));
+
         // Link/copy all asset directories - avoid duplicates by tracking source directories
         var linkedSources = new HashSet<string>();
 
@@ -373,6 +376,13 @@ public static class Program {
     private static void CreateAssetLabelerScript(string editorPath) {
         string sourceFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "UnityScripts", "AssetLabeler.cs");
         string targetFile = Path.Combine(editorPath, "AssetLabeler.cs");
+        FileSystem.CopyFile(sourceFile, targetFile, true);
+    }
+
+    private static void CreateAssetConfigurationDecisionScript(string editorPath) {
+        string sourceFile =
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "UnityScripts", "AssetConfigurationDecision.cs");
+        string targetFile = Path.Combine(editorPath, "AssetConfigurationDecision.cs");
         FileSystem.CopyFile(sourceFile, targetFile, true);
     }
 
