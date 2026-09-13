@@ -179,9 +179,9 @@ public class AssetLabeler
             // Normalize the path format.
             var extension = Path.GetExtension(assetPath).ToLower();
 
-            // Process only common texture, audio, shader, and font file types.
+            // Process only common texture, audio, shader, compute shader, and font file types.
             if (extension != ".png" && extension != ".jpeg" && extension != ".jpg" && extension != ".psd" &&
-                extension != ".wav" && extension != ".mp3" && extension != ".ogg" && extension != ".shader" &&
+                extension != ".wav" && extension != ".mp3" && extension != ".ogg" && extension != ".shader" && extension != ".compute" &&
                 extension != ".ttf" && extension != ".otf")
             {
                 // Console.WriteLine("[Warning] Skipped asset, wrong format: " + filePath);
