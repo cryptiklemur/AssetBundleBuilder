@@ -25,7 +25,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-26.04, windows-latest, macos-latest]
         
     steps:
     - name: Checkout
@@ -48,7 +48,7 @@ jobs:
 
   semantic-release:
     needs: build-and-test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     if: needs.build-and-test.result == 'success' && github.event_name == 'push'
     
     steps:
